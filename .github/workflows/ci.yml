@@ -83,7 +83,7 @@ jobs:
           /tmp/hubla-cli-wheel/bin/hubla-cli --json schema sales list
           HOME=/tmp/hubla-cli-home /tmp/hubla-cli-wheel/bin/hubla-cli --json skill install --agent generic
           test -f /tmp/hubla-cli-home/.agents/skills/hubla-cli/SKILL.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: distributions
           path: dist/
