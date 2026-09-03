@@ -1,0 +1,27 @@
+# Arquivos locais e ambientes Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+.env
+.env.*
+*.egg-info/
+build/
+dist/
+
+# IDE e sistema
+.DS_Store
+.idea/
+.vscode/
+
+# Dados que nunca devem ser versionados
+*.har
+*.log
+*.xlsx
+*.csv
+credentials*.json
+profiles/
