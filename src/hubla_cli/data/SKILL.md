@@ -4,7 +4,7 @@ description: Use when a user wants to consultar ou gerenciar sua própria conta 
 license: MIT
 compatibility: Requer o executável hubla-cli instalado, acesso à internet e uma conta Hubla autorizada pelo usuário.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 # Hubla CLI
@@ -28,13 +28,21 @@ Antes do primeiro login, `doctor` retorna código 2 e informa que credenciais e 
 hubla-cli --json status
 ```
 
-3. Se não houver login, peça ao usuário para digitar as credenciais no terminal interativo:
+3. Se não houver login, não execute `hubla-cli login` pelo terminal interno do agente. Mostre ao usuário o comando abaixo para ele executar em um terminal separado:
 
 ```bash
 hubla-cli login
 ```
 
-Nunca peça que a pessoa envie a senha no chat, em argumento de comando, arquivo, log ou variável escrita por você. O prompt de login mascara a senha com asteriscos. O CLI não salva a senha; guarda somente o token renovável no cofre do sistema ou, quando ele não existe, em arquivo privado do usuário.
+Pare e aguarde o usuário responder `autenticado`. Só então execute:
+
+```bash
+hubla-cli --json status
+```
+
+O terminal separado deve usar o mesmo computador, usuário do sistema e ambiente em que o CLI foi instalado. Em uma VPS, o usuário deve executar o login por SSH nessa VPS. Um terminal local não compartilha credenciais com containers, sandboxes ou máquinas remotas.
+
+Nunca peça que a pessoa envie e-mail, senha, token ou código de autenticação pelo chat, em argumento de comando, arquivo, log ou variável escrita por você. O prompt de login mascara a senha com asteriscos. O CLI não salva a senha; guarda somente o token renovável no cofre do sistema ou, quando ele não existe, em arquivo privado do usuário.
 
 Para contas diferentes, use um perfil explícito e preserve o mesmo perfil nos comandos seguintes:
 

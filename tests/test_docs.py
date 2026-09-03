@@ -34,6 +34,11 @@ def test_readme_contains_both_installers_and_ai_agent_prompt() -> None:
         assert agent in readme
     assert "hubla-cli login" in readme
     assert "skill install --agent auto" in readme
+    assert "Não execute `hubla-cli login` pelo seu terminal interno" in readme
+    assert "Pare e aguarde eu responder “autenticado”" in readme
+    assert "Depois responda ao agente:" in readme
+    assert "me deixe digitar o e-mail e a senha" not in readme
+    assert "instala automaticamente um Python 3.12 gerenciado" in readme
 
 
 def test_readme_documents_every_top_level_command() -> None:
@@ -129,5 +134,8 @@ def test_repository_enforces_lf_and_uses_current_github_actions() -> None:
     assert "actions/checkout@v7" in ci
     assert "actions/setup-python@v7" in ci
     assert "actions/upload-artifact@v7" in ci
+    assert "Installer bootstrap / ${{ matrix.os }}" in ci
+    assert 'HUBLA_CLI_FORCE_MANAGED_PYTHON: "1"' in ci
+    assert 'HUBLA_CLI_FORCE_UV_INSTALL: "1"' in ci
     assert "actions/checkout@v7" in release
     assert "actions/setup-python@v7" in release

@@ -60,10 +60,53 @@ jobs:
             exit 1
           }
 
+  installer-bootstrap:
+    name: Installer bootstrap / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Bootstrap missing Python on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          HUBLA_CLI_FORCE_MANAGED_PYTHON: "1"
+          HUBLA_CLI_FORCE_UV_INSTALL: "1"
+          HUBLA_CLI_PACKAGE_URL: ${{ github.workspace }}
+          HUBLA_CLI_HOME: ${{ runner.temp }}/hubla-cli-bootstrap
+          HUBLA_CLI_BIN_DIR: ${{ runner.temp }}/hubla-cli-bootstrap-bin
+          HUBLA_CLI_SKIP_SKILL: "1"
+        run: |
+          bash install.sh
+          "${HUBLA_CLI_BIN_DIR}/hubla-cli" --version
+          test -x "${HUBLA_CLI_HOME}/bootstrap/uv"
+      - name: Bootstrap missing Python on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          HUBLA_CLI_FORCE_MANAGED_PYTHON: "1"
+          HUBLA_CLI_FORCE_UV_INSTALL: "1"
+          HUBLA_CLI_PACKAGE_URL: ${{ github.workspace }}
+          HUBLA_CLI_HOME: ${{ runner.temp }}/hubla-cli-bootstrap
+          HUBLA_CLI_BIN_DIR: ${{ runner.temp }}/hubla-cli-bootstrap-bin
+          HUBLA_CLI_SKIP_SKILL: "1"
+        run: |
+          ./install.ps1
+          & (Join-Path $env:HUBLA_CLI_BIN_DIR "hubla-cli.cmd") --version
+          if ($LASTEXITCODE -ne 0) {
+            throw "O executável instalado não respondeu."
+          }
+          if (-not (Test-Path (Join-Path $env:HUBLA_CLI_HOME "bootstrap/uv.exe"))) {
+            throw "O bootstrap do uv não foi instalado."
+          }
+
   build:
     name: Build distribution
     runs-on: ubuntu-latest
-    needs: [test, security]
+    needs: [test, security, installer-bootstrap]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

@@ -167,3 +167,6 @@ def test_repository_skill_and_packaged_skill_are_identical() -> None:
     assert "hubla-cli --json schema" in contents
     assert "--confirm" in contents
     assert "senha" in contents
+    assert "não execute `hubla-cli login` pelo terminal interno" in contents
+    assert "pare e aguarde" in contents
+    assert "autenticado" in contents

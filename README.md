@@ -32,25 +32,55 @@ Funciona com **Claude Code, Codex, Hermes, OpenClaw, Antigravity (comando `agy`)
 Cole o texto abaixo no seu agente:
 
 ```text
-Instale o Hubla CLI deste repositório público: https://github.com/pycodebr/hubla-cli
+Instale o Hubla CLI seguindo o README deste repositório:
+https://github.com/pycodebr/hubla-cli
 
-1. Detecte se o computador usa Linux, macOS ou Windows.
-2. No Linux/macOS, execute:
-   curl -fsSL https://raw.githubusercontent.com/pycodebr/hubla-cli/main/install.sh | bash
-3. No Windows PowerShell, execute:
-   irm https://raw.githubusercontent.com/pycodebr/hubla-cli/main/install.ps1 | iex
-4. Verifique com `hubla-cli --version`.
-5. Garanta que a skill foi instalada executando `hubla-cli --json skill install --agent auto` e confirme com `hubla-cli --json skill status --agent auto`.
-6. Depois, abra `hubla-cli login` em um terminal interativo e me deixe digitar o e-mail e a senha. Não peça, capture, imprima nem salve minha senha no chat ou em arquivos. A senha deve aparecer apenas como asteriscos no terminal.
-7. Confirme a conexão com `hubla-cli --json status` e passe a usar a skill `hubla-cli` para atender meus pedidos sobre a minha conta Hubla.
-8. Antes de qualquer reembolso, saque, cancelamento, alteração de acesso ou outra escrita, mostre o alvo e o efeito, peça minha confirmação específica e só então use `--confirm`. Depois, leia o mesmo alvo novamente para verificar o resultado.
+Instale também a skill com:
+hubla-cli --json skill install --agent auto
+
+Não execute `hubla-cli login` pelo seu terminal interno, porque esse comando exige interação direta com o usuário.
+
+Quando a instalação terminar:
+1. Confirme o caminho em que o hubla-cli foi instalado.
+2. Mostre o comando `hubla-cli login` para eu executar em um terminal separado.
+3. Pare e aguarde eu responder “autenticado”.
+4. Depois que eu responder, execute:
+   hubla-cli --json status
+5. Se o status estiver válido, use a skill hubla-cli para atender meus pedidos.
+
+Nunca peça que eu envie e-mail, senha, token ou código de autenticação pelo chat.
 ```
 
 O instalador sempre grava uma cópia em `~/.agents/skills/hubla-cli`, o caminho compartilhado pelo padrão Agent Skills. Quando detecta um agente com diretório próprio, também instala ali. Uma skill existente, modificada manualmente ou localizada em diretório simbólico não é sobrescrita automaticamente.
 
+### Finalize o login no seu terminal
+
+O agente deve parar depois da instalação. Abra outro terminal no mesmo computador e execute:
+
+```bash
+hubla-cli login
+```
+
+Depois responda ao agente:
+
+```text
+autenticado
+```
+
+O agente poderá confirmar a conexão com `hubla-cli --json status`. Isso funciona porque a credencial fica no cofre ou no perfil do usuário; o agente acessa somente o token renovável já armazenado e não precisa conhecer sua senha.
+
+O terminal separado precisa usar o mesmo usuário do sistema e o mesmo ambiente em que o CLI foi instalado. Se o agente estiver em uma VPS, faça o login por SSH nessa VPS. Um terminal local não compartilha credenciais automaticamente com containers, sandboxes ou máquinas remotas.
+
 ## Instalação no terminal
 
-Requisito: **Python 3.10 ou superior**.
+### Pré-requisitos automáticos
+
+- Linux e macOS precisam de `curl` ou `wget` para baixar os instaladores.
+- Windows precisa de PowerShell 5.1 ou superior.
+- Python não precisa estar instalado previamente. O script procura Python 3.10 ou superior e, se não encontrar uma versão compatível ou o módulo `venv`, instala automaticamente um Python 3.12 gerenciado com uma versão fixada do [uv](https://docs.astral.sh/uv/), sem `sudo` e sem acesso administrativo.
+- O script também verifica o `pip`, instala-o com `ensurepip` quando necessário e só então instala o Hubla CLI e a skill.
+
+Quem já possui Python compatível continua usando a instalação existente. Para escolher explicitamente um interpretador, defina `HUBLA_CLI_PYTHON`.
 
 ### Linux e macOS
 
@@ -64,7 +94,7 @@ curl -fsSL https://raw.githubusercontent.com/pycodebr/hubla-cli/main/install.sh 
 irm https://raw.githubusercontent.com/pycodebr/hubla-cli/main/install.ps1 | iex
 ```
 
-Os scripts criam um ambiente Python isolado no diretório do usuário, instalam `hubla-cli` a partir deste repositório, adicionam o comando ao `PATH` do usuário e instalam a skill. Não precisam de acesso administrativo.
+Os scripts verificam os pré-requisitos, instalam o que estiver ausente no escopo do usuário, criam um ambiente Python isolado, instalam `hubla-cli` a partir deste repositório, adicionam o comando ao `PATH` e instalam a skill. Não precisam de acesso administrativo.
 
 Se quiser revisar antes de executar, abra [install.sh](install.sh) ou [install.ps1](install.ps1).
 
@@ -380,6 +410,9 @@ Toda escrita na biblioteca também exige `confirm=True`.
 | `HUBLA_REQUEST_ID` | Ativa ou desativa `x-request-id`. |
 | `HUBLA_CLI_AGENT` | Alvo usado pelo instalador de skill. |
 | `HUBLA_CLI_VERSION` | Versão publicada instalada pelos scripts. |
+| `HUBLA_CLI_PYTHON` | Caminho de um Python 3.10+ que deve ser usado. |
+| `HUBLA_CLI_MANAGED_PYTHON_VERSION` | Versão gerenciada instalada quando Python está ausente; padrão `3.12`. |
+| `HUBLA_CLI_UV_VERSION` | Versão do bootstrap uv; padrão fixado pelo release. |
 | `HUBLA_CLI_HOME` | Diretório do ambiente isolado do instalador. |
 | `HUBLA_CLI_BIN_DIR` | Diretório dos wrappers do comando. |
 

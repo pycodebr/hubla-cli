@@ -9,6 +9,8 @@ hubla-cli --json skill install --agent auto
 hubla-cli --json skill status --agent auto
 ```
 
+Os scripts de instalação verificam Python, `venv` e `pip`. Quando Python 3.10+ não está disponível, eles instalam Python 3.12 no escopo do usuário por meio de uma versão fixada do uv, sem exigir acesso administrativo.
+
 `auto` sempre instala em `~/.agents/skills/hubla-cli` e adiciona diretórios nativos quando detectados. O resultado JSON lista cada destino e um dos estados:
 
 - `installed`: primeira instalação;
@@ -19,6 +21,14 @@ hubla-cli --json skill status --agent auto
 `--force` substitui um conflito, portanto só deve ser usado após revisar e decidir descartar a cópia existente.
 
 O marcador gerenciado registra formato, origem, versão e SHA-256 do `SKILL.md`. Marcador inválido, conteúdo alterado pelo usuário ou diretório simbólico vira conflito e não é sobrescrito automaticamente.
+
+## Handoff seguro de login
+
+O terminal interno de um agente normalmente não expõe um TTY para o usuário. Por isso, o agente deve instalar o CLI e a skill, mostrar `hubla-cli login` e parar. O usuário executa esse comando em um terminal separado e responde `autenticado`. Somente então o agente roda `hubla-cli --json status`.
+
+O login precisa acontecer no mesmo computador, usuário do sistema e ambiente em que o agente instalou o CLI. Em uma VPS, o comando deve ser executado por SSH na VPS. Containers, sandboxes e máquinas remotas não compartilham automaticamente o cofre ou o perfil local.
+
+O usuário nunca deve enviar e-mail, senha, token ou código de autenticação pelo chat. O agente não deve executar `hubla-cli login` pelo próprio terminal interno nem tentar alimentar o prompt por argumento, variável, arquivo ou stdin.
 
 ## Compatibilidade verificada por convenção pública
 

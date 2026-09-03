@@ -1,7 +1,10 @@
 $ErrorActionPreference = "Stop"
+if ($PSVersionTable.PSVersion -lt [Version]"5.1") {
+    throw "PowerShell 5.1 ou superior é necessário."
+}
 
 $RepositoryUrl = "https://github.com/pycodebr/hubla-cli"
-$Version = if ($env:HUBLA_CLI_VERSION) { $env:HUBLA_CLI_VERSION } else { "0.1.0" }
+$Version = if ($env:HUBLA_CLI_VERSION) { $env:HUBLA_CLI_VERSION } else { "0.1.1" }
 $PackageUrl = if ($env:HUBLA_CLI_PACKAGE_URL) {
     $env:HUBLA_CLI_PACKAGE_URL
 } else {
@@ -18,6 +21,13 @@ $BinDir = if ($env:HUBLA_CLI_BIN_DIR) {
     Join-Path $HOME ".local\bin"
 }
 $Agent = if ($env:HUBLA_CLI_AGENT) { $env:HUBLA_CLI_AGENT } else { "auto" }
+$UvVersion = if ($env:HUBLA_CLI_UV_VERSION) { $env:HUBLA_CLI_UV_VERSION } else { "0.12.9" }
+$ManagedPythonVersion = if ($env:HUBLA_CLI_MANAGED_PYTHON_VERSION) {
+    $env:HUBLA_CLI_MANAGED_PYTHON_VERSION
+} else {
+    "3.12"
+}
+$UvBootstrapDir = Join-Path $InstallRoot "bootstrap"
 
 function Write-Step([string]$Message) {
     Write-Host $Message -ForegroundColor Cyan
@@ -32,6 +42,114 @@ function Test-Python([string]$Executable, [string[]]$Prefix) {
     }
 }
 
+function Test-UvVersion([string]$Executable) {
+    try {
+        $VersionOutput = @(& $Executable --version 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $VersionOutput.Count -eq 0) {
+            return $false
+        }
+        $ExpectedVersion = "uv $UvVersion"
+        $ActualVersion = $VersionOutput[-1].Trim()
+        return $ActualVersion -eq $ExpectedVersion -or $ActualVersion.StartsWith("$ExpectedVersion ")
+    } catch {
+        return $false
+    }
+}
+
+function Get-UvExecutable {
+    if ($env:HUBLA_CLI_UV) {
+        if (
+            -not (Test-Path -Path $env:HUBLA_CLI_UV -PathType Leaf) -or
+            -not (Test-UvVersion $env:HUBLA_CLI_UV)
+        ) {
+            throw "HUBLA_CLI_UV precisa executar uv $UvVersion."
+        }
+        return $env:HUBLA_CLI_UV
+    }
+
+    $UvExecutable = Join-Path $UvBootstrapDir "uv.exe"
+    if (
+        $env:HUBLA_CLI_FORCE_UV_INSTALL -ne "1" -and
+        (Test-Path -Path $UvExecutable -PathType Leaf) -and
+        (Test-UvVersion $UvExecutable)
+    ) {
+        return $UvExecutable
+    }
+
+    Write-Step "Python compatível não encontrado. Instalando uv $UvVersion."
+    New-Item -ItemType Directory -Force -Path $UvBootstrapDir | Out-Null
+    $PreviousUvInstallDir = $env:UV_UNMANAGED_INSTALL
+    $InstallerPath = Join-Path (
+        [System.IO.Path]::GetTempPath()
+    ) "hubla-cli-uv-$([Guid]::NewGuid().ToString('N')).ps1"
+    try {
+        $env:UV_UNMANAGED_INSTALL = $UvBootstrapDir
+        $InstallerUrl = "https://astral.sh/uv/$UvVersion/install.ps1"
+        Invoke-WebRequest -UseBasicParsing -Uri $InstallerUrl -OutFile $InstallerPath
+        $PowerShellExecutable = (Get-Process -Id $PID).Path
+        $InstallerOutput = @(
+            & $PowerShellExecutable -NoProfile -ExecutionPolicy Bypass -File $InstallerPath
+        )
+        $InstallerExitCode = $LASTEXITCODE
+        $InstallerOutput | Out-Host
+        if ($InstallerExitCode -ne 0) {
+            throw "Não foi possível instalar o uv."
+        }
+    } finally {
+        Remove-Item $InstallerPath -Force -ErrorAction SilentlyContinue
+        if ($null -eq $PreviousUvInstallDir) {
+            Remove-Item Env:UV_UNMANAGED_INSTALL -ErrorAction SilentlyContinue
+        } else {
+            $env:UV_UNMANAGED_INSTALL = $PreviousUvInstallDir
+        }
+    }
+
+    if (-not (Test-Path -Path $UvExecutable -PathType Leaf)) {
+        throw "A instalação automática do uv não produziu um executável válido."
+    }
+    if (-not (Test-UvVersion $UvExecutable)) {
+        throw "O uv instalado não corresponde à versão $UvVersion."
+    }
+    return $UvExecutable
+}
+
+function Install-ManagedPython {
+    $UvExecutable = Get-UvExecutable
+    $PreviousPythonInstallDir = $env:UV_PYTHON_INSTALL_DIR
+    $PreviousPythonInstallBin = $env:UV_PYTHON_INSTALL_BIN
+    try {
+        $env:UV_PYTHON_INSTALL_DIR = Join-Path $InstallRoot "python"
+        $env:UV_PYTHON_INSTALL_BIN = "0"
+        Write-Step "Instalando Python $ManagedPythonVersion sem acesso administrativo."
+        & $UvExecutable python install $ManagedPythonVersion | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw "Não foi possível instalar o Python gerenciado."
+        }
+        $PythonCandidates = @(
+            & $UvExecutable python find --managed-python $ManagedPythonVersion
+        )
+        if ($LASTEXITCODE -ne 0 -or $PythonCandidates.Count -eq 0) {
+            throw "Não foi possível localizar o Python gerenciado."
+        }
+        $ManagedPython = $PythonCandidates[-1].Trim()
+        if (-not (Test-Python $ManagedPython @())) {
+            throw "O Python gerenciado instalado não é compatível."
+        }
+        return $ManagedPython
+    } finally {
+        if ($null -eq $PreviousPythonInstallDir) {
+            Remove-Item Env:UV_PYTHON_INSTALL_DIR -ErrorAction SilentlyContinue
+        } else {
+            $env:UV_PYTHON_INSTALL_DIR = $PreviousPythonInstallDir
+        }
+        if ($null -eq $PreviousPythonInstallBin) {
+            Remove-Item Env:UV_PYTHON_INSTALL_BIN -ErrorAction SilentlyContinue
+        } else {
+            $env:UV_PYTHON_INSTALL_BIN = $PreviousPythonInstallBin
+        }
+    }
+}
+
 $PythonExecutable = $null
 $PythonPrefix = @()
 if ($env:HUBLA_CLI_PYTHON) {
@@ -40,20 +158,29 @@ if ($env:HUBLA_CLI_PYTHON) {
         throw "HUBLA_CLI_PYTHON precisa apontar para Python 3.10 ou superior."
     }
 }
-if (-not $PythonExecutable -and (Get-Command py -ErrorAction SilentlyContinue)) {
+if (
+    -not $PythonExecutable -and
+    $env:HUBLA_CLI_FORCE_MANAGED_PYTHON -ne "1" -and
+    (Get-Command py -ErrorAction SilentlyContinue)
+) {
     if (Test-Python "py" @("-3")) {
         $PythonExecutable = "py"
         $PythonPrefix = @("-3")
     }
 }
-if (-not $PythonExecutable -and (Get-Command python -ErrorAction SilentlyContinue)) {
+if (
+    -not $PythonExecutable -and
+    $env:HUBLA_CLI_FORCE_MANAGED_PYTHON -ne "1" -and
+    (Get-Command python -ErrorAction SilentlyContinue)
+) {
     if (Test-Python "python" @()) {
         $PythonExecutable = "python"
     }
 }
 
 if (-not $PythonExecutable) {
-    throw "Python 3.10 ou superior não foi encontrado. Instale o Python e tente novamente."
+    $PythonExecutable = Install-ManagedPython
+    $PythonPrefix = @()
 }
 
 $VenvDir = Join-Path $InstallRoot "venv"
@@ -61,11 +188,24 @@ Write-Step "Instalando Hubla CLI em $InstallRoot"
 New-Item -ItemType Directory -Force -Path $InstallRoot, $BinDir | Out-Null
 & $PythonExecutable @PythonPrefix -m venv $VenvDir
 if ($LASTEXITCODE -ne 0) {
-    throw "Não foi possível criar o ambiente Python isolado."
+    Write-Step "O módulo venv não está disponível. Usando Python gerenciado pelo uv."
+    $PythonExecutable = Install-ManagedPython
+    $PythonPrefix = @()
+    & $PythonExecutable -m venv --clear $VenvDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "Não foi possível criar o ambiente Python isolado."
+    }
 }
 
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 $CliExecutable = Join-Path $VenvDir "Scripts\hubla-cli.exe"
+& $VenvPython -m pip --version *> $null
+if ($LASTEXITCODE -ne 0) {
+    & $VenvPython -m ensurepip --upgrade
+    if ($LASTEXITCODE -ne 0) {
+        throw "Não foi possível instalar o pip no ambiente isolado."
+    }
+}
 & $VenvPython -m pip install --disable-pip-version-check --upgrade pip
 if ($LASTEXITCODE -ne 0) {
     throw "Não foi possível preparar o instalador Python."
@@ -113,4 +253,5 @@ if (@($env:Path -split ";") -notcontains $BinDir) {
 
 Write-Host "Hubla CLI instalado." -ForegroundColor Green
 Write-Host "Executável: $(Join-Path $BinDir 'hubla-cli.cmd')"
-Write-Host "Próximo passo: hubla-cli login"
+Write-Host "Próximo passo do usuário, em terminal separado: hubla-cli login"
+Write-Host 'Se um agente executou este script, ele deve parar e aguardar a resposta "autenticado".'
