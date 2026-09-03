@@ -20,6 +20,7 @@ def test_readme_contains_both_installers_and_ai_agent_prompt() -> None:
         "irm https://raw.githubusercontent.com/pycodebr/hubla-cli/main/install.ps1 | iex"
         in readme
     )
+    assert "[Net.SecurityProtocolType]::Tls12" in readme
     assert "## Instalação em agentes de IA" in readme
     assert "Prompt para copiar" in readme
     for agent in (
@@ -137,5 +138,7 @@ def test_repository_enforces_lf_and_uses_current_github_actions() -> None:
     assert "Installer bootstrap / ${{ matrix.os }}" in ci
     assert 'HUBLA_CLI_FORCE_MANAGED_PYTHON: "1"' in ci
     assert 'HUBLA_CLI_FORCE_UV_INSTALL: "1"' in ci
+    assert "shell: powershell" in ci
+    assert "PSVersion.Major -ne 5" in ci
     assert "actions/checkout@v7" in release
     assert "actions/setup-python@v7" in release

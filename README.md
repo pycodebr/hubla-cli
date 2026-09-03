@@ -91,8 +91,10 @@ curl -fsSL https://raw.githubusercontent.com/pycodebr/hubla-cli/main/install.sh 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/pycodebr/hubla-cli/main/install.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; irm https://raw.githubusercontent.com/pycodebr/hubla-cli/main/install.ps1 | iex
 ```
+
+O prefixo habilita TLS 1.2 no Windows PowerShell 5.1 sem remover protocolos já configurados.
 
 Os scripts verificam os pré-requisitos, instalam o que estiver ausente no escopo do usuário, criam um ambiente Python isolado, instalam `hubla-cli` a partir deste repositório, adicionam o comando ao `PATH` e instalam a skill. Não precisam de acesso administrativo.
 

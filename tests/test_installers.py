@@ -38,6 +38,8 @@ def test_bash_installer_has_valid_syntax_and_safe_defaults() -> None:
     assert 'python find --managed-python "${MANAGED_PYTHON_VERSION}"' in contents
     assert "uv_version_is_expected" in contents
     assert "command -v uv" not in contents
+    assert "ensure_venv_pip" in contents
+    assert contents.count('PYTHON_BIN="$(managed_python)"') >= 2
     assert '"${HOME}/.zprofile"' in contents
     assert '"${HOME}/.bash_profile"' in contents
     assert "terminal separado" in contents
@@ -68,6 +70,11 @@ def test_powershell_installer_is_user_scoped_and_installs_skill() -> None:
     assert "Invoke-WebRequest" in contents
     assert "ExecutionPolicy Bypass" in contents
     assert "$InstallerOutput | Out-Host" in contents
+    assert "Enable-Tls12" in contents
+    assert "SecurityProtocol -bor" in contents
+    assert "HUBLA_CLI_UV_INSTALLER_PATH" in contents
+    assert "Test-OrInstallVenvPip" in contents
+    assert contents.count("$PythonExecutable = Install-ManagedPython") >= 3
     assert "Get-Command py" in contents
     assert "Get-Command python" in contents
     assert "UTF8Encoding($false)" in contents

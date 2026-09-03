@@ -83,9 +83,9 @@ jobs:
           bash install.sh
           "${HUBLA_CLI_BIN_DIR}/hubla-cli" --version
           test -x "${HUBLA_CLI_HOME}/bootstrap/uv"
-      - name: Bootstrap missing Python on Windows
+      - name: Bootstrap missing Python on Windows PowerShell 5.1
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: powershell
         env:
           HUBLA_CLI_FORCE_MANAGED_PYTHON: "1"
           HUBLA_CLI_FORCE_UV_INSTALL: "1"
@@ -94,6 +94,9 @@ jobs:
           HUBLA_CLI_BIN_DIR: ${{ runner.temp }}/hubla-cli-bootstrap-bin
           HUBLA_CLI_SKIP_SKILL: "1"
         run: |
+          if ($PSVersionTable.PSVersion.Major -ne 5) {
+            throw "Este teste precisa executar no Windows PowerShell 5.1."
+          }
           ./install.ps1
           & (Join-Path $env:HUBLA_CLI_BIN_DIR "hubla-cli.cmd") --version
           if ($LASTEXITCODE -ne 0) {

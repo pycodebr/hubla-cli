@@ -6,6 +6,14 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ## [Não lançado]
 
+## [0.1.2] - 2026-09-03
+
+### Corrigido
+
+- Se um ambiente virtual não tiver `pip` e o `ensurepip` falhar, os instaladores agora recriam o ambiente com o Python gerenciado antes de abortar.
+- O instalador do Windows habilita TLS 1.2 sem remover protocolos existentes, inclusive no subprocesso que instala o uv.
+- A CI executa o bootstrap completo no Windows PowerShell 5.1, além do PowerShell moderno usado na matriz principal.
+
 ## [0.1.1] - 2026-09-03
 
 ### Corrigido
@@ -28,6 +36,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 - Agent Skill com instalação automática para harnesses compatíveis.
 - Testes, lint, build e CI multiplataforma.
 
-[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.1.1...HEAD
+[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/pycodebr/hubla-cli/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/pycodebr/hubla-cli/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/pycodebr/hubla-cli/releases/tag/v0.1.0

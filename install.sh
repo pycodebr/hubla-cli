@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 REPOSITORY_URL="https://github.com/pycodebr/hubla-cli"
-VERSION="${HUBLA_CLI_VERSION:-0.1.1}"
+VERSION="${HUBLA_CLI_VERSION:-0.1.2}"
 PACKAGE_URL="${HUBLA_CLI_PACKAGE_URL:-${REPOSITORY_URL}/archive/refs/tags/v${VERSION}.zip}"
 INSTALL_ROOT="${HUBLA_CLI_HOME:-${HOME}/.local/share/hubla-cli}"
 BIN_DIR="${HUBLA_CLI_BIN_DIR:-${HOME}/.local/bin}"
@@ -106,6 +106,15 @@ find_python() {
   managed_python
 }
 
+ensure_venv_pip() {
+  local venv_python="$1"
+  if "${venv_python}" -m pip --version >/dev/null 2>&1; then
+    return 0
+  fi
+  "${venv_python}" -m ensurepip --upgrade >/dev/null 2>&1 || return 1
+  "${venv_python}" -m pip --version >/dev/null 2>&1
+}
+
 append_user_path() {
   local profile="$1"
   local marker="# hubla-cli user path"
@@ -149,8 +158,12 @@ if ! "${PYTHON_BIN}" -m venv "${VENV_DIR}"; then
   "${PYTHON_BIN}" -m venv --clear "${VENV_DIR}" || \
     fail "Não foi possível criar o ambiente Python isolado."
 fi
-if ! "${VENV_DIR}/bin/python" -m pip --version >/dev/null 2>&1; then
-  "${VENV_DIR}/bin/python" -m ensurepip --upgrade || \
+if ! ensure_venv_pip "${VENV_DIR}/bin/python"; then
+  info "O pip não está disponível. Recriando o ambiente com Python gerenciado pelo uv."
+  PYTHON_BIN="$(managed_python)"
+  "${PYTHON_BIN}" -m venv --clear "${VENV_DIR}" || \
+    fail "Não foi possível recriar o ambiente Python isolado."
+  ensure_venv_pip "${VENV_DIR}/bin/python" || \
     fail "Não foi possível instalar o pip no ambiente isolado."
 fi
 "${VENV_DIR}/bin/python" -m pip install --disable-pip-version-check --upgrade pip

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hubla-cli"
-version = "0.1.1"
+version = "0.1.2"
 description = "CLI e TUI não oficiais para gerenciar uma conta Hubla, feitos para pessoas e agentes de IA"
 readme = "README.md"
 requires-python = ">=3.10"
