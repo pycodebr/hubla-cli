@@ -31,7 +31,7 @@ dependencies = [
     "platformdirs>=4.3,<5",
     "prompt-toolkit>=3.0.51,<4",
     "requests>=2.32.3,<3",
-    "rich>=14,<15",
+    "rich>=14,<16",
     "typer>=0.16,<1",
 ]
 
