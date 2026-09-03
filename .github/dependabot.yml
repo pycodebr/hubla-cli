@@ -2,9 +2,15 @@ version: 2
 updates:
   - package-ecosystem: pip
     directory: "/"
+    versioning-strategy: increase-if-necessary
     schedule:
       interval: monthly
     labels: [dependencies]
+    ignore:
+      - dependency-name: rich
+        update-types: ["version-update:semver-major"]
+      - dependency-name: mypy
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

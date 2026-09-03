@@ -19,8 +19,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.10", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -65,8 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, security]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -83,7 +83,7 @@ jobs:
           /tmp/hubla-cli-wheel/bin/hubla-cli --json schema sales list
           HOME=/tmp/hubla-cli-home /tmp/hubla-cli-wheel/bin/hubla-cli --json skill install --agent generic
           test -f /tmp/hubla-cli-home/.agents/skills/hubla-cli/SKILL.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: distributions
           path: dist/
@@ -93,8 +93,8 @@ jobs:
     name: Security scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip

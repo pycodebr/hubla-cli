@@ -115,3 +115,19 @@ def test_release_version_is_consistent_across_package_installers_and_skill() -> 
     assert expected_skill in (ROOT / "skills" / "hubla-cli" / "SKILL.md").read_text(
         encoding="utf-8"
     )
+
+
+def test_repository_enforces_lf_and_uses_current_github_actions() -> None:
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "*.py text eol=lf" in attributes
+    assert "*.sh text eol=lf" in attributes
+    assert "actions/checkout@v7" in ci
+    assert "actions/setup-python@v7" in ci
+    assert "actions/upload-artifact@v7" in ci
+    assert "actions/checkout@v7" in release
+    assert "actions/setup-python@v7" in release
