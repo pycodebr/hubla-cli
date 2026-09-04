@@ -34,6 +34,25 @@ class FakeResource:
         self.calls.append(("refund", {"invoice_id": invoice_id, "confirm": confirm}))
         return self.result
 
+    def availability_forecast(
+        self,
+        *,
+        target_dates: list[str] | None = None,
+        currency: str = "BRL",
+        timezone: str = "America/Sao_Paulo",
+    ) -> Any:
+        self.calls.append(
+            (
+                "availability_forecast",
+                {
+                    "target_dates": target_dates,
+                    "currency": currency,
+                    "timezone": timezone,
+                },
+            )
+        )
+        return self.result
+
 
 class FakeClient:
     def __init__(self, result: Any = None) -> None:
@@ -109,6 +128,42 @@ def test_sales_list_has_agent_friendly_json_output(monkeypatch: Any) -> None:
     assert client.sales.calls[0][1]["statuses"] == ["paid"]
     assert client.sales.calls[0][1]["offer_ids"] == ["offer-1"]
     assert client.sales.calls[0][1]["page_size"] == 5
+
+
+def test_finance_forecast_accepts_repeated_target_dates(monkeypatch: Any) -> None:
+    expected = {"forecasts": [{"date": "2026-09-30"}]}
+    client = FakeClient(expected)
+    monkeypatch.setattr(cli, "get_client", lambda profile: client)
+
+    result = runner.invoke(
+        cli.app,
+        [
+            "--json",
+            "finance",
+            "forecast",
+            "--date",
+            "2026-09-30",
+            "--date",
+            "2026-10-31",
+            "--currency",
+            "BRL",
+            "--timezone",
+            "America/Sao_Paulo",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["data"] == expected
+    assert client.finance.calls == [
+        (
+            "availability_forecast",
+            {
+                "target_dates": ["2026-09-30", "2026-10-31"],
+                "currency": "BRL",
+                "timezone": "America/Sao_Paulo",
+            },
+        )
+    ]
 
 
 def test_dynamic_call_rejects_non_object_json_before_authentication() -> None:

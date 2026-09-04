@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 REPOSITORY_URL="https://github.com/pycodebr/hubla-cli"
-VERSION="${HUBLA_CLI_VERSION:-0.1.2}"
+VERSION="${HUBLA_CLI_VERSION:-0.2.0}"
 PACKAGE_URL="${HUBLA_CLI_PACKAGE_URL:-${REPOSITORY_URL}/archive/refs/tags/v${VERSION}.zip}"
 INSTALL_ROOT="${HUBLA_CLI_HOME:-${HOME}/.local/share/hubla-cli}"
 BIN_DIR="${HUBLA_CLI_BIN_DIR:-${HOME}/.local/bin}"

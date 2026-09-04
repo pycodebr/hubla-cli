@@ -38,6 +38,10 @@ class HublaHttpError(HublaError):
         super().__init__(f"Hubla HTTP {status_code} para {method} {url}")
 
 
+class HublaContractError(HublaError):
+    """Raised when live Hubla data cannot be reconciled safely."""
+
+
 class ConfirmationRequired(HublaError):
     """Raised before an operation that needs explicit confirmation."""
 

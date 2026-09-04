@@ -4,7 +4,7 @@ description: Use when a user wants to consultar ou gerenciar sua própria conta 
 license: MIT
 compatibility: Requer o executável hubla-cli instalado, acesso à internet e uma conta Hubla autorizada pelo usuário.
 metadata:
-  version: "0.1.2"
+  version: "0.2.0"
 ---
 
 # Hubla CLI
@@ -79,6 +79,7 @@ hubla-cli --json products offers PRODUCT_ID
 hubla-cli --json products cohorts PRODUCT_ID
 hubla-cli --json members list --product-id PRODUCT_ID
 hubla-cli --json finance balance
+hubla-cli --json finance forecast
 ```
 
 Datas devem ser ISO 8601 com o fuso necessário para a pergunta do usuário:
@@ -88,6 +89,28 @@ hubla-cli --json sales list \
   --start-date 2026-01-01T00:00:00-03:00 \
   --end-date 2026-01-31T23:59:59-03:00
 ```
+
+## Projeção de saldo para saque
+
+Sem uma data explícita, consulte o último dia do mês atual e do próximo mês:
+
+```bash
+hubla-cli --json finance forecast
+```
+
+Para uma ou mais datas específicas, repita `--date`:
+
+```bash
+hubla-cli --json finance forecast \
+  --date 2026-09-30 \
+  --date 2026-10-31
+```
+
+Use `projectedAvailableInCents` como total projetado. O comando soma `availableNowInCents`, `receivableReleasingInCents` e `reserveReleasingInCents`. Os recebíveis são reconciliados com o saldo atual da Hubla antes da resposta.
+
+A Hubla não expõe uma agenda futura da reserva de saldo. Por isso, `reserveReleasingInCents` distribui o saldo reservado atual pelas datas previstas das vendas conhecidas, usando a regra de 30 dias. A saída marca `reserveScheduleEstimated: true` e pressupõe que não haverá novas vendas, reembolsos ou chargebacks. Apresente esse componente como estimativa, nunca como garantia, e refaça a consulta quando a data estiver próxima.
+
+A taxa de saque não é descontada da projeção.
 
 ## Cobertura completa
 

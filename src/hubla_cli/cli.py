@@ -21,6 +21,7 @@ from hubla_cli.client import HublaClient
 from hubla_cli.credentials import CredentialStore
 from hubla_cli.errors import CommandError, HublaError, HublaHttpError
 from hubla_cli.prompts import prompt_email, prompt_password
+from hubla_cli.resources.finance import DEFAULT_FINANCE_TIMEZONE
 from hubla_cli.skills import install_skill, skill_status
 from hubla_cli.transport import BASE_URLS
 from hubla_cli.tui import render_data, run_tui
@@ -1023,6 +1024,33 @@ def analytics_get_command(
         resource = get_client(_runtime(ctx).profile).analytics
         result = getattr(resource, metric)(**kwargs)
         _emit_success(ctx, result, title=f"Indicador: {metric}")
+
+    _execute(ctx, operation)
+
+
+@finance_app.command("forecast")
+def finance_forecast_command(
+    ctx: typer.Context,
+    target_dates: list[str] | None = typer.Option(
+        None,
+        "--date",
+        help=(
+            "Data-alvo YYYY-MM-DD. Repita para comparar datas. Sem esta opção, "
+            "usa o fim do mês atual e do próximo."
+        ),
+    ),
+    currency: str = typer.Option("BRL", "--currency"),
+    timezone: str = typer.Option(DEFAULT_FINANCE_TIMEZONE, "--timezone"),
+) -> None:
+    """Projeta o saldo sacável em datas futuras a partir do retrato atual."""
+
+    def operation() -> None:
+        result = get_client(_runtime(ctx).profile).finance.availability_forecast(
+            target_dates=target_dates,
+            currency=currency,
+            timezone=timezone,
+        )
+        _emit_success(ctx, result, title="Projeção de saldo para saque")
 
     _execute(ctx, operation)
 

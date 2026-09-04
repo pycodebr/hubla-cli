@@ -30,6 +30,15 @@ class ContractTransport:
                 "affiliates": [],
                 "partners": [],
             }
+        if path == "/financial-statement/balance":
+            return {
+                "availableInCents": 0,
+                "receivableInCents": 0,
+                "reservedInCents": 0,
+                "currency": "BRL",
+            }
+        if path == "/financial-statement/movements":
+            return {"movements": []}
         return {"ok": True}
 
 
@@ -64,6 +73,8 @@ def _required_value(name: str, annotation: Any) -> Any:
         return 1
     if name == "period":
         return "daily"
+    if name == "account_type":
+        return "receivable"
     if name in {"start_date", "end_date"}:
         return "2026-01-01T00:00:00-03:00"
     if annotation is bool:
