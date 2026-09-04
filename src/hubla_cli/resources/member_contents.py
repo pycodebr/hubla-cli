@@ -51,7 +51,7 @@ class MembersAreaContentsResource(ResourceBase):
             page=page,
             page_size=page_size,
         )
-        return iter(result.items)
+        yield from result.items
 
     def all_sections(
         self,

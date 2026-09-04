@@ -237,6 +237,24 @@ Adicionar acesso gratuito usa um corpo semelhante a:
 | GET | `web` | `/financial-statement/withdrawals/{withdrawalId}` | leitura |
 | POST | `web` | `/financial-statement/withdrawal/web` | alteração confirmada |
 
+O contrato financeiro foi reconfirmado em 2026-09-04 no bundle do portal e por consultas autenticadas somente de leitura. `GET /financial-statement/balance` aceita `currency` e retorna `availableInCents`, `receivableInCents`, `transferableInCents`, `contestedInCents`, `reservedInCents` e `currency`.
+
+`GET /financial-statement/movements` usa os parâmetros abaixo:
+
+- `accountType`: `available`, `receivable`, `transferable`, `contested` ou `reserved`;
+- `startDate` e `endDate`: datas ISO 8601;
+- `limit`: de 1 a 100;
+- `currency`: moeda da carteira;
+- `after`: cursor devolvido pela página anterior.
+
+A resposta agrupa itens em `movements[].movements` e pode retornar outro cursor em `after`. Movimentos de `receivable` incluem `releaseDate`. Movimentos de `reserved` mostram entradas e saídas históricas, mas não incluem uma data futura de liberação.
+
+`GET /financial-statement/account-statement` exige `startDate`, `endDate` e `limit`, aceita `currency`, `transactionSources` e `after`, e rejeita janelas superiores a 90 dias.
+
+`finance.all_movements` percorre todos os cursores de `/financial-statement/movements` e elimina identificadores repetidos. `finance.availability_forecast` usa o saldo atual e os movimentos a receber para produzir um cronograma reconciliado. O total de recebíveis precisa ser igual a `receivableInCents`.
+
+A reserva de saldo segue a regra pública da Hubla de 30 dias, mas não possui um endpoint com agenda futura. A projeção distribui o `reservedInCents` atual proporcionalmente pelas vendas conhecidas que ainda estão dentro dessa janela. O resultado identifica essa parte com `reserveScheduleEstimated: true` e não incorpora vendas, reembolsos ou chargebacks futuros.
+
 Valores enviados a `finance.withdraw` usam centavos. Moeda, valor, dispositivo e código de validação devem ser confirmados antes da chamada.
 
 ## Conta e colaboradores

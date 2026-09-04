@@ -119,7 +119,7 @@ class ProductsResource(ResourceBase):
             page=page,
             page_size=page_size,
         )
-        return iter(result.items)
+        yield from result.items
 
     def all_offers(
         self,
@@ -306,7 +306,7 @@ class ProductsResource(ResourceBase):
             page=page,
             page_size=page_size,
         )
-        return iter(result.items)
+        yield from result.items
 
     def all_cohorts(
         self,

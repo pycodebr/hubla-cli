@@ -21,6 +21,7 @@ O Hubla CLI reúne autenticação, vendas, reembolsos, assinaturas, produtos, of
 - Saída humana com tabelas e saída `--json` estável para agentes e automações.
 - Catálogo executável com todos os recursos, parâmetros e indicação de risco.
 - Operações de escrita bloqueadas até receberem `--confirm` explicitamente.
+- Projeção reconciliada do saldo sacável no fim do mês atual, no mês seguinte ou em datas informadas.
 - Skill compatível com o padrão aberto Agent Skills e instalada junto com o CLI.
 
 ## Instalação em agentes de IA
@@ -184,6 +185,12 @@ hubla-cli members list --product-id PRODUCT_ID
 
 # Saldo
 hubla-cli finance balance
+
+# Projeção para o fim do mês atual e do próximo
+hubla-cli finance forecast
+
+# Projeção para datas específicas
+hubla-cli finance forecast --date 2026-09-30 --date 2026-10-31
 ```
 
 Para agentes e scripts, coloque `--json` antes do grupo:
@@ -248,7 +255,7 @@ Opções globais:
 | `products` | `products list`, `products get`, `products offers`, `products cohorts` |
 | `members` | `members list`, `members deactivated`, `members pending` |
 | `analytics` | `analytics get` |
-| `finance` | `finance balance`, `finance statement`, `finance movements` |
+| `finance` | `finance balance`, `finance forecast`, `finance statement`, `finance movements` |
 | `account` | `account show`, `account profile` |
 | `skill` | `skill install`, `skill status` |
 
@@ -299,6 +306,34 @@ hubla-cli --json sales list --offer-id OFFER_ID
 ```
 
 Os comandos de lista expõem `--page` e `--page-size`. Um agente que precisa de todos os registros deve paginar até reconciliar o total declarado pela resposta ou receber uma página vazia.
+
+## Projeção de saldo para saque
+
+O comando abaixo retorna duas projeções por padrão: o último dia do mês atual e o último dia do mês seguinte.
+
+```bash
+hubla-cli --json finance forecast
+```
+
+Para consultar uma ou mais datas específicas:
+
+```bash
+hubla-cli --json finance forecast \
+  --date 2026-09-30 \
+  --date 2026-10-31
+```
+
+Cada item de `forecasts` apresenta:
+
+- `availableNowInCents`: saldo já disponível no momento da consulta;
+- `receivableReleasingInCents`: recebíveis atuais com data de liberação até a data-alvo;
+- `reserveReleasingInCents`: parte estimada da reserva atual liberada até a data-alvo;
+- `projectedAvailableInCents`: soma dos três componentes;
+- `remainingReceivableInCents` e `remainingReservedInCents`: valores ainda pendentes depois da data-alvo.
+
+O cronograma de recebíveis usa as datas de liberação retornadas pela Hubla e precisa reconciliar exatamente com `receivableInCents`. Se o portal retornar dados incompletos ou incompatíveis, o comando falha em vez de apresentar um total parcial.
+
+O portal não fornece uma agenda futura para a reserva de saldo. O CLI distribui `reservedInCents` pelas vendas conhecidas ainda dentro da regra de 30 dias. Essa parte é marcada com `reserveScheduleEstimated: true`. A projeção considera somente o retrato atual e não inclui novas vendas, reembolsos ou chargebacks depois da consulta. A taxa de saque também não é descontada. Rode o comando novamente quando a data estiver próxima.
 
 ## Operações que alteram a conta
 

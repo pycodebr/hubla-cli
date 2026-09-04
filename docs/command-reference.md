@@ -86,6 +86,8 @@ Inspect balances and movements and perform confirmed withdrawals.
 | Operação | Tipo | Parâmetros |
 | --- | --- | --- |
 | `finance.account_statement` | leitura | `params?` |
+| `finance.all_movements` | leitura | `account_type`, `start_date`, `end_date`, `currency?`, `page_size?` |
+| `finance.availability_forecast` | leitura | `target_dates?`, `currency?`, `timezone?` |
 | `finance.balance` | leitura | `currency?` |
 | `finance.invoice_details` | leitura | `invoice_id` |
 | `finance.invoice_movements` | leitura | `invoice_id` |
