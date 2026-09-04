@@ -131,6 +131,17 @@ Inspect and manage integrations, rules, and event retries.
 | `integrations.rules` | leitura | `integration_id`, `page?`, `page_size?` |
 | `integrations.update_rule` | **alteração — `--confirm`** | `integration_id`, `rule_id`, `payload` |
 
+## members_area_contents
+
+Inspect sections exposed in a product's members area.
+
+| Operação | Tipo | Parâmetros |
+| --- | --- | --- |
+| `members_area_contents.all_sections` | leitura | `product_id`, `page?`, `page_size?`, `post_page_size?` |
+| `members_area_contents.cohort_snapshot` | leitura | `product_id`, `cohort_id`, `page_size?`, `post_page_size?` |
+| `members_area_contents.iter_sections` | leitura | `product_id`, `page?`, `page_size?`, `post_page_size?` |
+| `members_area_contents.list_sections` | leitura | `product_id`, `page?`, `page_size?`, `post_page_size?` |
+
 ## members
 
 Inspect members and manage account-authorized access changes.
@@ -140,18 +151,25 @@ Inspect members and manage account-authorized access changes.
 | `members.accesses_by_product` | leitura | `product_id` |
 | `members.active` | leitura | `page?`, `page_size?`, `product_id?`, `types?`, `search?`, `cohort_ids?`, `include_items_quantity_total?` |
 | `members.add` | **alteração — `--confirm`** | `product_id`, `emails`, `lifetime`, `days?`, `offer_id?`, `quantity?` |
+| `members.all` | leitura | `product_id`, `page?`, `page_size?`, `types?`, `search?`, `cohort_ids?` |
 | `members.cancel_invite` | **alteração — `--confirm`** | `invite_id` |
 | `members.change_cohorts` | **alteração — `--confirm`** | `members`, `new_cohorts` |
 | `members.change_cohorts_by_product` | **alteração — `--confirm`** | `product_id`, `member_ids`, `cohorts` |
+| `members.change_cohorts_with_readback` | **alteração — `--confirm`** | `product_id`, `member`, `email`, `new_cohorts` |
 | `members.create_free_subscription` | **alteração — `--confirm`** | `product_id`, `emails`, `lifetime`, `days?`, `offer_id?`, `quantity?` |
 | `members.deactivated` | leitura | `page?`, `page_size?`, `product_id?`, `search?` |
 | `members.edit_access` | **alteração — `--confirm`** | `payload` |
 | `members.export_active` | **exportação binária — `--confirm` e `--output`** | `page?`, `page_size?`, `product_id?`, `offer_id?`, `types?`, `search?`, `timezone?` |
 | `members.export_deactivated` | **exportação binária — `--confirm` e `--output`** | `page?`, `page_size?`, `product_id?`, `offer_id?`, `search?`, `timezone?` |
+| `members.find_exact_by_email` | leitura | `product_id`, `email`, `page_size?`, `types?` |
+| `members.get_current_cohort_ids` | leitura | `product_id`, `email`, `page_size?`, `types?` |
+| `members.get_member_cohort_ids` | leitura | `product_id`, `email`, `page_size?`, `types?` |
+| `members.iter_all` | leitura | `product_id`, `page?`, `page_size?`, `types?`, `search?`, `cohort_ids?` |
 | `members.list_active` | leitura | `page?`, `page_size?`, `product_id?`, `types?`, `search?`, `cohort_ids?`, `include_items_quantity_total?` |
 | `members.list_deactivated` | leitura | `page?`, `page_size?`, `product_id?`, `search?` |
 | `members.offers_and_cohorts` | leitura | `product_id` |
 | `members.pending_invites` | leitura | — |
+| `members.readback_cohort_ids` | leitura | `product_id`, `email`, `page_size?`, `types?` |
 | `members.recover_password` | **alteração — `--confirm`** | `payload` |
 | `members.remove` | **alteração — `--confirm`** | `product_id`, `user_id` |
 | `members.remove_free_subscription` | **alteração — `--confirm`** | `product_id`, `user_id` |
@@ -167,6 +185,8 @@ Inspect and manage products, offers, cohorts, settings, and resources.
 
 | Operação | Tipo | Parâmetros |
 | --- | --- | --- |
+| `products.all_cohorts` | leitura | `product_id`, `page?`, `page_size?`, `enhance_with_details?` |
+| `products.all_offers` | leitura | `product_id`, `page?`, `page_size?`, `archived?` |
 | `products.archive_offer` | **alteração — `--confirm`** | `product_id`, `offer_id` |
 | `products.associated_cohorts` | leitura | `resource_external_id`, `product_id` |
 | `products.bind_brain` | **alteração — `--confirm`** | `offer_id`, `brain_id`, `cohort_ids` |
@@ -183,12 +203,15 @@ Inspect and manage products, offers, cohorts, settings, and resources.
 | `products.duplicate_offer` | **alteração — `--confirm`** | `product_id`, `offer_id` |
 | `products.external_contents` | leitura | `product_id` |
 | `products.get` | leitura | `product_id` |
+| `products.get_cohort` | leitura | `product_id`, `cohort_id` |
 | `products.get_combo_cohorts` | leitura | `product_id` |
 | `products.get_offer` | leitura | `product_id`, `offer_id` |
 | `products.get_offers_and_cohorts` | leitura | `product_id` |
 | `products.get_settings` | leitura | `product_id`, `setting_type` |
 | `products.global_offers` | leitura | — |
 | `products.global_product_filters` | leitura | — |
+| `products.iter_cohorts` | leitura | `product_id`, `page?`, `page_size?`, `enhance_with_details?` |
+| `products.iter_offers` | leitura | `product_id`, `page?`, `page_size?`, `archived?` |
 | `products.list` | leitura | `types?`, `page?`, `page_size?`, `time_scope?`, `include_deleted?` |
 | `products.list_cohorts` | leitura | `product_id`, `page?`, `page_size?`, `enhance_with_details?` |
 | `products.list_offers` | leitura | `product_id`, `page?`, `page_size?`, `archived?` |
@@ -235,10 +258,12 @@ List invoices, inspect sales, export data, and request refunds.
 
 | Operação | Tipo | Parâmetros |
 | --- | --- | --- |
+| `sales.all` | leitura | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `types?`, `methods?`, `search?`, `utm_source?`, `utm_medium?`, `utm_campaign?`, `utm_content?`, `utm_term?`, `date_range_by?`, `wallet?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `sales.detail` | leitura | `invoice_id` |
 | `sales.export` | **exportação binária — `--confirm` e `--output`** | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `types?`, `methods?`, `search?`, `utm_source?`, `utm_medium?`, `utm_campaign?`, `utm_content?`, `utm_term?`, `date_range_by?`, `wallet?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `sales.filter` | leitura | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `types?`, `methods?`, `search?`, `utm_source?`, `utm_medium?`, `utm_campaign?`, `utm_content?`, `utm_term?`, `date_range_by?`, `wallet?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `sales.get` | leitura | `invoice_id` |
+| `sales.iter_all` | leitura | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `types?`, `methods?`, `search?`, `utm_source?`, `utm_medium?`, `utm_campaign?`, `utm_content?`, `utm_term?`, `date_range_by?`, `wallet?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `sales.list` | leitura | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `types?`, `methods?`, `search?`, `utm_source?`, `utm_medium?`, `utm_campaign?`, `utm_content?`, `utm_term?`, `date_range_by?`, `wallet?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `sales.reembolsar` | **alteração — `--confirm`** | `invoice_id` |
 | `sales.refund` | **alteração — `--confirm`** | `invoice_id` |
@@ -266,6 +291,7 @@ Inspect subscriptions, renewals, trials, upgrades, and installments.
 | --- | --- | --- |
 | `subscriptions.active_summary` | leitura | `start_date`, `end_date`, `period?`, `offer_ids?`, `has_selected_all?` |
 | `subscriptions.add_daily_credits` | **alteração — `--confirm`** | `subscription_id`, `payload` |
+| `subscriptions.all` | leitura | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `search?`, `date_range_by?`, `plan_type?`, `is_free_trial_active?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `subscriptions.all_installments` | leitura | `page?`, `page_size?`, `order_by?`, `order_direction?`, `filters?` |
 | `subscriptions.cancel_smart_installment` | **alteração — `--confirm`** | `installment_id` |
 | `subscriptions.cancel_upgrade` | **alteração — `--confirm`** | `subscription_id` |
@@ -282,6 +308,7 @@ Inspect subscriptions, renewals, trials, upgrades, and installments.
 | `subscriptions.init_change_payment_method` | **alteração — `--confirm`** | `subscription_id` |
 | `subscriptions.init_upgrade` | **alteração — `--confirm`** | `subscription_id` |
 | `subscriptions.invoices` | leitura | `subscription_id`, `page?`, `page_size?` |
+| `subscriptions.iter_all` | leitura | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `search?`, `date_range_by?`, `plan_type?`, `is_free_trial_active?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `subscriptions.list` | leitura | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `search?`, `date_range_by?`, `plan_type?`, `is_free_trial_active?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `subscriptions.list_smart_installments` | leitura | `offer_ids?`, `has_selected_all?`, `start_date?`, `end_date?`, `statuses?`, `methods?`, `types?`, `search?`, `date_range_by?`, `page?`, `page_size?`, `order_by?`, `order_direction?` |
 | `subscriptions.new_summary` | leitura | `start_date`, `end_date`, `offer_ids?`, `has_selected_all?` |

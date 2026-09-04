@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import builtins
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any
 from urllib.parse import quote
 
+from hubla_cli.pagination import collect_paginated
 from hubla_cli.payloads import subscriptions_body
 from hubla_cli.resources.base import ResourceBase
 
@@ -52,6 +54,81 @@ class SubscriptionsResource(ResourceBase):
             order_direction=order_direction,
         )
         return self._call("web", "POST", "/subscriptions/list", json=body)
+
+    def iter_all(
+        self,
+        *,
+        offer_ids: Sequence[str] | None = None,
+        has_selected_all: bool | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        statuses: Sequence[str] | None = None,
+        search: str = "",
+        date_range_by: str | None = None,
+        plan_type: str | None = None,
+        is_free_trial_active: bool | None = None,
+        page: int = 1,
+        page_size: int = 25,
+        order_by: str = "createdAt",
+        order_direction: str = "DESC",
+    ) -> Iterator[Any]:
+        """Yield every subscription matching the supplied filters."""
+        result = collect_paginated(
+            lambda current_page, current_page_size: self.list(
+                offer_ids=offer_ids,
+                has_selected_all=has_selected_all,
+                start_date=start_date,
+                end_date=end_date,
+                statuses=statuses,
+                search=search,
+                date_range_by=date_range_by,
+                plan_type=plan_type,
+                is_free_trial_active=is_free_trial_active,
+                page=current_page,
+                page_size=current_page_size,
+                order_by=order_by,
+                order_direction=order_direction,
+            ),
+            page=page,
+            page_size=page_size,
+        )
+        yield from result.items
+
+    def all(
+        self,
+        *,
+        offer_ids: Sequence[str] | None = None,
+        has_selected_all: bool | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        statuses: Sequence[str] | None = None,
+        search: str = "",
+        date_range_by: str | None = None,
+        plan_type: str | None = None,
+        is_free_trial_active: bool | None = None,
+        page: int = 1,
+        page_size: int = 25,
+        order_by: str = "createdAt",
+        order_direction: str = "DESC",
+    ) -> builtins.list[Any]:
+        """Return every subscription matching the supplied filters."""
+        return list(
+            self.iter_all(
+                offer_ids=offer_ids,
+                has_selected_all=has_selected_all,
+                start_date=start_date,
+                end_date=end_date,
+                statuses=statuses,
+                search=search,
+                date_range_by=date_range_by,
+                plan_type=plan_type,
+                is_free_trial_active=is_free_trial_active,
+                page=page,
+                page_size=page_size,
+                order_by=order_by,
+                order_direction=order_direction,
+            )
+        )
 
     filter = list
 

@@ -155,6 +155,7 @@ Desativar renovação automática não prova que um acesso deve terminar imediat
 | GET | `product` | `/filters/offers` | leitura |
 | GET | `product` | `/filters/products` | leitura |
 | GET | `product` | `/products/{productId}/cohorts` | leitura |
+| GET | `product` | `/products/{productId}/cohorts/{cohortId}` | leitura |
 | POST | `product` | `/products/{productId}/cohorts` | alteração confirmada |
 | PUT | `product` | `/products/{productId}/cohorts/{cohortId}` | alteração confirmada |
 | PATCH | `product` | `/products/{productId}/cohorts/{cohortId}/name` | alteração confirmada |
@@ -181,6 +182,7 @@ Os payloads de criação e atualização são dicionários flexíveis porque os 
 | Método | Serviço | Caminho | Classe |
 | --- | --- | --- | --- |
 | GET | `members_area` | `/members/actives/list` | leitura |
+| GET | `members_area` | `/hub/sections/v2` | leitura |
 | GET | `members_area` | `/members/deactivates/list` | leitura |
 | GET | `members_area` | `/invites/list/pending` | leitura |
 | POST | `members_area` | `/members/create-invites-free-subscription` | alteração confirmada |

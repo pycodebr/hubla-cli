@@ -6,6 +6,10 @@ from hubla_cli.resources.analytics import AnalyticsResource
 from hubla_cli.resources.coupons import CouponsResource
 from hubla_cli.resources.finance import FinanceResource
 from hubla_cli.resources.integrations import IntegrationsResource
+from hubla_cli.resources.member_contents import (
+    MemberContentsResource,
+    MembersAreaContentsResource,
+)
 from hubla_cli.resources.members import GroupsResource, MembersResource
 from hubla_cli.resources.products import ProductsResource
 from hubla_cli.resources.refunds import RefundsResource
@@ -21,6 +25,8 @@ __all__ = [
     "FinanceResource",
     "GroupsResource",
     "IntegrationsResource",
+    "MemberContentsResource",
+    "MembersAreaContentsResource",
     "MembersResource",
     "ProductsResource",
     "RefundsResource",

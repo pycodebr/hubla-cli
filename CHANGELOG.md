@@ -6,6 +6,16 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ## [Não lançado]
 
+## [0.1.3] - 2026-09-04
+
+### Adicionado
+
+- Paginação reconciliada para vendas, assinaturas, ofertas, turmas e membros.
+- Leitura de detalhe de turma e das seções da área de membros.
+- Busca exata de membro por produto e e-mail, com detecção de resultado ambíguo ou filtro ignorado.
+- Troca de turmas com confirmação explícita e readback do conjunto final.
+- Snapshot normalizado das seções associadas a uma turma.
+
 ## [0.1.2] - 2026-09-03
 
 ### Corrigido
@@ -36,7 +46,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 - Agent Skill com instalação automática para harnesses compatíveis.
 - Testes, lint, build e CI multiplataforma.
 
-[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.1.2...HEAD
+[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/pycodebr/hubla-cli/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/pycodebr/hubla-cli/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/pycodebr/hubla-cli/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/pycodebr/hubla-cli/releases/tag/v0.1.0

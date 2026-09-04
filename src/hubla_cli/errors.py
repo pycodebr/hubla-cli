@@ -44,3 +44,27 @@ class ConfirmationRequired(HublaError):
 
 class CommandError(HublaError):
     """Raised when CLI command input is invalid."""
+
+
+class PaginationError(HublaError):
+    """Raised when a paginated response cannot be reconciled safely."""
+
+
+class CohortReadbackError(HublaError):
+    """Raised when a cohort readback cannot be verified safely."""
+
+
+class MemberLookupError(CohortReadbackError):
+    """Raised when a member cannot be identified unambiguously."""
+
+
+class MemberNotFoundError(MemberLookupError):
+    """Raised when no member matches the requested product and e-mail."""
+
+
+class MemberFilterIgnoredError(MemberLookupError):
+    """Raised when the API returns data outside the requested member filter."""
+
+
+class AmbiguousMemberError(MemberLookupError):
+    """Raised when more than one member matches the requested identity."""

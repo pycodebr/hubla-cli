@@ -67,6 +67,7 @@ def test_client_exposes_all_resource_groups() -> None:
         "groups",
         "integrations",
         "members",
+        "members_area_contents",
         "products",
         "refunds",
         "sales",

@@ -12,7 +12,7 @@ function Enable-Tls12 {
 Enable-Tls12
 
 $RepositoryUrl = "https://github.com/pycodebr/hubla-cli"
-$Version = if ($env:HUBLA_CLI_VERSION) { $env:HUBLA_CLI_VERSION } else { "0.1.2" }
+$Version = if ($env:HUBLA_CLI_VERSION) { $env:HUBLA_CLI_VERSION } else { "0.1.3" }
 $PackageUrl = if ($env:HUBLA_CLI_PACKAGE_URL) {
     $env:HUBLA_CLI_PACKAGE_URL
 } else {

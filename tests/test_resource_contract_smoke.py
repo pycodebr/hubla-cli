@@ -30,6 +30,23 @@ class ContractTransport:
                 "affiliates": [],
                 "partners": [],
             }
+        if path == "/members/actives/list":
+            return {
+                "items": [
+                    {
+                        "id": "member-1",
+                        "email": "email-1",
+                        "cohortIds": ["item-1"],
+                    }
+                ],
+                "itemsQuantityTotal": 1,
+            }
+        if path in {
+            "/hub/sections/v2",
+            "/invoices/list",
+            "/subscriptions/list",
+        } or path.endswith(("/offers", "/cohorts")):
+            return {"items": [], "total": 0}
         return {"ok": True}
 
 
@@ -52,6 +69,8 @@ def _required_value(name: str, annotation: Any) -> Any:
     }
     if name == "members":
         return [{"memberId": "member-1", "currentCohorts": []}]
+    if name == "member":
+        return {"memberId": "member-1", "currentCohorts": []}
     if name == "payload":
         return {"name": "Exemplo", "id": "item-1"}
     if name == "filters" or name == "params":
@@ -109,7 +128,9 @@ def test_every_catalog_operation_reaches_only_the_fake_transport(
     client = HublaClient(transport=transport)
     method = getattr(getattr(client, resource_name), method_name)
 
-    method(**_required_kwargs(method))
+    result = method(**_required_kwargs(method))
+    if method_name.startswith("iter_"):
+        list(result)
 
     assert transport.calls
 

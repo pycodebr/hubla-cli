@@ -2,15 +2,97 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any
 from urllib.parse import quote
 
+from hubla_cli.errors import (
+    AmbiguousMemberError,
+    CohortReadbackError,
+    MemberFilterIgnoredError,
+    MemberNotFoundError,
+)
+from hubla_cli.pagination import collect_paginated
 from hubla_cli.resources.base import ResourceBase
+from hubla_cli.resources.member_contents import MembersAreaContentsResource
+
+__all__ = ["MembersAreaContentsResource", "MembersResource", "GroupsResource"]
 
 
 def _id(value: Any) -> str:
     return quote(str(value), safe="")
+
+
+def _normalise_ids(value: Any) -> list[str]:
+    """Normalize scalar, mapping, and sequence IDs without splitting strings."""
+    if value is None:
+        return []
+    if isinstance(value, Mapping):
+        for key in ("id", "cohortId", "cohort_id", "externalId", "external_id"):
+            if key in value and value[key] is not None:
+                return _normalise_ids(value[key])
+        return []
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        result: list[str] = []
+        for item in value:
+            result.extend(_normalise_ids(item))
+        return list(dict.fromkeys(result))
+    return [str(value)]
+
+
+def _member_cohort_ids(member: Mapping[str, Any]) -> list[str]:
+    for key in (
+        "currentCohorts",
+        "current_cohorts",
+        "cohortIds",
+        "cohort_ids",
+        "cohorts",
+    ):
+        if key in member:
+            return _normalise_ids(member[key])
+    for key in ("access", "membership", "member"):
+        nested = member.get(key)
+        if isinstance(nested, Mapping):
+            nested_ids = _member_cohort_ids(nested)
+            if nested_ids:
+                return nested_ids
+    return []
+
+
+def _member_email(member: Mapping[str, Any]) -> str | None:
+    for key in (
+        "email",
+        "userEmail",
+        "user_email",
+        "memberEmail",
+        "member_email",
+        "emailAddress",
+        "email_address",
+    ):
+        value = member.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip().casefold()
+    for key in ("user", "member", "profile", "account"):
+        nested = member.get(key)
+        if isinstance(nested, Mapping):
+            email = _member_email(nested)
+            if email is not None:
+                return email
+    return None
+
+
+def _member_product_id(member: Mapping[str, Any]) -> str | None:
+    for key in ("productId", "product_id"):
+        value = member.get(key)
+        if value is not None:
+            return str(value)
+    for key in ("access", "membership", "member"):
+        nested = member.get(key)
+        if isinstance(nested, Mapping):
+            product_id = _member_product_id(nested)
+            if product_id is not None:
+                return product_id
+    return None
 
 
 class MembersResource(ResourceBase):
@@ -41,6 +123,171 @@ class MembersResource(ResourceBase):
         return self._call("members_area", "GET", "/members/actives/list", params=params)
 
     list_active = active
+
+    def iter_all(
+        self,
+        product_id: str,
+        *,
+        page: int = 1,
+        page_size: int = 25,
+        types: Sequence[str] | None = None,
+        search: str = "",
+        cohort_ids: Sequence[str] | None = None,
+    ) -> Iterator[Any]:
+        """Yield all active members for a product before local cohort filtering.
+
+        Hubla's cohort filter is intentionally cleared on every provider call.
+        The full product result and its declared total are reconciled first, so
+        a provider-side filter bug cannot hide members from the caller.
+        """
+        result = collect_paginated(
+            lambda current_page, current_page_size: self.active(
+                page=current_page,
+                page_size=current_page_size,
+                product_id=product_id,
+                types=types,
+                search=search,
+                cohort_ids=(),
+                include_items_quantity_total=True,
+            ),
+            page=page,
+            page_size=page_size,
+            require_total=True,
+        )
+        requested_cohorts = set(_normalise_ids(cohort_ids))
+        if not requested_cohorts:
+            yield from result.items
+            return
+        for member in result.items:
+            if isinstance(member, Mapping) and requested_cohorts.intersection(
+                _member_cohort_ids(member)
+            ):
+                yield member
+
+    def all(
+        self,
+        product_id: str,
+        *,
+        page: int = 1,
+        page_size: int = 25,
+        types: Sequence[str] | None = None,
+        search: str = "",
+        cohort_ids: Sequence[str] | None = None,
+    ) -> list[Any]:
+        """Return all active members for a product before local cohort filtering."""
+        return list(
+            self.iter_all(
+                product_id,
+                page=page,
+                page_size=page_size,
+                types=types,
+                search=search,
+                cohort_ids=cohort_ids,
+            )
+        )
+
+    def get_current_cohort_ids(
+        self,
+        product_id: str,
+        email: str,
+        *,
+        page_size: int = 25,
+        types: Sequence[str] | None = None,
+    ) -> list[str]:
+        """Read current cohort IDs for exactly one active member by e-mail."""
+        member = self.find_exact_by_email(
+            product_id,
+            email,
+            page_size=page_size,
+            types=types,
+        )
+        return _member_cohort_ids(member)
+
+    def find_exact_by_email(
+        self,
+        product_id: str,
+        email: str,
+        *,
+        page_size: int = 25,
+        types: Sequence[str] | None = None,
+    ) -> Mapping[str, Any]:
+        """Return exactly one product member matching an e-mail address."""
+        expected_email = email.strip().casefold()
+        members = self.all(
+            product_id,
+            page_size=page_size,
+            types=types,
+            search=email,
+        )
+        for member in members:
+            if not isinstance(member, Mapping):
+                continue
+            observed_product_id = _member_product_id(member)
+            if observed_product_id is not None and observed_product_id != str(
+                product_id
+            ):
+                raise MemberFilterIgnoredError(
+                    "a Hubla retornou membro fora do produto solicitado"
+                )
+        matches = [
+            member
+            for member in members
+            if isinstance(member, Mapping) and _member_email(member) == expected_email
+        ]
+        if not matches:
+            raise MemberNotFoundError(
+                "nenhum membro ativo corresponde ao produto e e-mail informados"
+            )
+        if len(matches) > 1:
+            raise AmbiguousMemberError(
+                "mais de um membro ativo corresponde ao produto e e-mail informados"
+            )
+        return matches[0]
+
+    def change_cohorts_with_readback(
+        self,
+        *,
+        product_id: str,
+        member: Mapping[str, Any],
+        email: str,
+        new_cohorts: Sequence[str],
+        confirm: bool = False,
+    ) -> Mapping[str, Any]:
+        """Change one member's cohorts and verify the exact resulting set."""
+        current_member = self.find_exact_by_email(product_id, email)
+        supplied_member_id = member.get("memberId", member.get("id"))
+        current_member_id = current_member.get("memberId", current_member.get("id"))
+        if (
+            supplied_member_id is None
+            or current_member_id is None
+            or str(supplied_member_id) != str(current_member_id)
+        ):
+            raise MemberFilterIgnoredError(
+                "o membro informado não corresponde ao produto e e-mail verificados"
+            )
+        write_result = self.change_cohorts(
+            members=[current_member],
+            new_cohorts=new_cohorts,
+            confirm=confirm,
+        )
+        readback_member = self.find_exact_by_email(product_id, email)
+        readback_member_id = readback_member.get("memberId", readback_member.get("id"))
+        if str(readback_member_id) != str(current_member_id):
+            raise CohortReadbackError(
+                "o readback retornou outro membro para o mesmo produto e e-mail"
+            )
+        observed = _member_cohort_ids(readback_member)
+        expected = set(_normalise_ids(new_cohorts))
+        if set(observed) != expected:
+            raise CohortReadbackError(
+                "as turmas observadas após a escrita divergem do estado solicitado"
+            )
+        return {"write_result": write_result, "cohort_ids": observed}
+
+    # Explicit aliases keep the readback helper discoverable for callers that
+    # name the returned value rather than the member lookup operation.
+    get_member_cohort_ids = get_current_cohort_ids
+    readback_cohort_ids = get_current_cohort_ids
 
     def deactivated(
         self,
@@ -165,18 +412,19 @@ class MembersResource(ResourceBase):
         *,
         confirm: bool = False,
     ) -> Any:
-        body = {
-            "members": [
+        normalized_members = []
+        for member in members:
+            member_id = member.get("memberId", member.get("id"))
+            if member_id is None:
+                raise ValueError("memberId is required to change cohorts")
+            normalized_members.append(
                 {
-                    "memberId": member.get("memberId", member.get("id")),
-                    "currentCohorts": list(
-                        member.get("currentCohorts", member.get("cohortIds", []))
-                    ),
-                    "newCohorts": list(new_cohorts),
+                    "memberId": str(member_id),
+                    "currentCohorts": _member_cohort_ids(member),
+                    "newCohorts": _normalise_ids(new_cohorts),
                 }
-                for member in members
-            ]
-        }
+            )
+        body = {"members": normalized_members}
         return self._write(
             "access",
             "POST",

@@ -4,7 +4,7 @@ description: Use when a user wants to consultar ou gerenciar sua própria conta 
 license: MIT
 compatibility: Requer o executável hubla-cli instalado, acesso à internet e uma conta Hubla autorizada pelo usuário.
 metadata:
-  version: "0.1.2"
+  version: "0.1.3"
 ---
 
 # Hubla CLI

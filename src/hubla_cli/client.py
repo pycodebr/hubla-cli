@@ -17,6 +17,7 @@ from hubla_cli.resources import (
     FinanceResource,
     GroupsResource,
     IntegrationsResource,
+    MembersAreaContentsResource,
     MembersResource,
     ProductsResource,
     RefundsResource,
@@ -65,6 +66,7 @@ class HublaClient:
         self.groups = GroupsResource(self)
         self.integrations = IntegrationsResource(self)
         self.members = MembersResource(self)
+        self.members_area_contents = MembersAreaContentsResource(self)
         self.products = ProductsResource(self)
         self.refunds = RefundsResource(self)
         self.sales = SalesResource(self)

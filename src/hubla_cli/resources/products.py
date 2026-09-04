@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import builtins
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any
 from urllib.parse import quote
 
+from hubla_cli.pagination import collect_paginated
 from hubla_cli.resources.base import ResourceBase
 
 
@@ -34,8 +36,6 @@ class ProductsResource(ResourceBase):
         if include_deleted is not None:
             params["includeDeleted"] = include_deleted
         return self._call("product", "GET", "/products", params=params)
-
-    list_products = list
 
     def get(self, product_id: str) -> Any:
         return self._call("product", "GET", f"/products/{_id(product_id)}")
@@ -99,6 +99,47 @@ class ProductsResource(ResourceBase):
             f"/products/{_id(product_id)}/offers",
             params={"page": page, "pageSize": page_size, "archived": archived},
         )
+
+    def iter_offers(
+        self,
+        product_id: str,
+        *,
+        page: int = 1,
+        page_size: int = 100,
+        archived: bool | None = False,
+    ) -> Iterator[Any]:
+        """Yield every offer for a product while reconciling pagination."""
+        result = collect_paginated(
+            lambda current_page, current_page_size: self.list_offers(
+                product_id,
+                page=current_page,
+                page_size=current_page_size,
+                archived=archived,
+            ),
+            page=page,
+            page_size=page_size,
+        )
+        return iter(result.items)
+
+    def all_offers(
+        self,
+        product_id: str,
+        *,
+        page: int = 1,
+        page_size: int = 100,
+        archived: bool | None = False,
+    ) -> builtins.list[Any]:
+        """Return every offer for a product."""
+        return list(
+            self.iter_offers(
+                product_id,
+                page=page,
+                page_size=page_size,
+                archived=archived,
+            )
+        )
+
+    list_products = list
 
     def get_offer(self, product_id: str, offer_id: str) -> Any:
         return self._call(
@@ -236,6 +277,53 @@ class ProductsResource(ResourceBase):
                 "pageSize": page_size,
                 "enhanceWithDetails": enhance_with_details,
             },
+        )
+
+    def get_cohort(self, product_id: str, cohort_id: str) -> Any:
+        """Read one cohort belonging to a product."""
+        return self._call(
+            "product",
+            "GET",
+            f"/products/{_id(product_id)}/cohorts/{_id(cohort_id)}",
+        )
+
+    def iter_cohorts(
+        self,
+        product_id: str,
+        *,
+        page: int = 1,
+        page_size: int = 100,
+        enhance_with_details: bool = False,
+    ) -> Iterator[Any]:
+        """Yield every cohort while reconciling the provider pagination."""
+        result = collect_paginated(
+            lambda current_page, current_page_size: self.list_cohorts(
+                product_id,
+                page=current_page,
+                page_size=current_page_size,
+                enhance_with_details=enhance_with_details,
+            ),
+            page=page,
+            page_size=page_size,
+        )
+        return iter(result.items)
+
+    def all_cohorts(
+        self,
+        product_id: str,
+        *,
+        page: int = 1,
+        page_size: int = 100,
+        enhance_with_details: bool = False,
+    ) -> builtins.list[Any]:
+        """Return every cohort for a product."""
+        return list(
+            self.iter_cohorts(
+                product_id,
+                page=page,
+                page_size=page_size,
+                enhance_with_details=enhance_with_details,
+            )
         )
 
     def create_cohort(

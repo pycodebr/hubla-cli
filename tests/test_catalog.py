@@ -40,6 +40,7 @@ def test_catalog_exposes_every_resource_and_operation_metadata() -> None:
         "groups",
         "integrations",
         "members",
+        "members_area_contents",
         "products",
         "refunds",
         "sales",
