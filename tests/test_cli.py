@@ -103,6 +103,12 @@ def test_schema_is_available_without_login_as_stable_json() -> None:
     assert "invoice_id" in payload["data"]["parameters"]
 
 
+def test_json_safe_materializes_iterators_from_dynamic_resource_calls() -> None:
+    result = cli._json_safe(iter([{"id": "item-1"}]))
+
+    assert result == [{"id": "item-1"}]
+
+
 def test_sales_list_has_agent_friendly_json_output(monkeypatch: Any) -> None:
     client = FakeClient()
     monkeypatch.setattr(cli, "get_client", lambda profile: client)
