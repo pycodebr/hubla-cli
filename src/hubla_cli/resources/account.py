@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 from urllib.parse import quote
 
+from hubla_cli.errors import HublaHttpError
 from hubla_cli.resources.base import ResourceBase
 
 
@@ -18,6 +19,38 @@ class AccountResource(ResourceBase):
 
     def business(self) -> Any:
         return self._call("web", "GET", "/business")
+
+    def identity(self) -> Any:
+        """Verify an owner account or a collaborator-only Hubla identity."""
+        try:
+            return self.business()
+        except HublaHttpError as exc:
+            if exc.status_code != 404:
+                raise
+            accesses = self.my_access()
+            if not isinstance(accesses, list) or not accesses:
+                raise exc
+            return {"kind": "collaborator", "accesses": accesses}
+
+    def my_access(self) -> Any:
+        """List accounts accessible to the signed-in collaborator."""
+        return self._call("web", "GET", "/user/roleplay/my-access")
+
+    def roleplay_reference(self) -> Any:
+        """Describe the currently assumed collaborator account."""
+        return self._call("web", "GET", "/user/roleplay/reference")
+
+    def pending_terms(self) -> Any:
+        """Read pending terms, including the optional USD-wallet agreement."""
+        return self._call(
+            "web",
+            "GET",
+            "/terms/pending",
+            params={"required": "false", "includeRejected": "true"},
+        )
+
+    def terms(self, key: str) -> Any:
+        return self._call("web", "GET", f"/terms/{_id(key)}")
 
     def profile(self) -> Any:
         return self._call("web", "GET", "/user/me/profile")

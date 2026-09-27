@@ -17,7 +17,7 @@ POST https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword
 POST https://securetoken.googleapis.com/v1/token
 ```
 
-Os BFFs recebem o ID token de curta duração no cabeçalho `Authorization: Bearer ...`. O CLI nunca documenta, imprime ou versiona o valor desse cabeçalho.
+Os BFFs recebem o ID token de curta duração no cabeçalho `Authorization: Bearer <token>`. O CLI nunca documenta, imprime ou versiona o valor desse cabeçalho.
 
 A senha serve apenas para criar a primeira sessão. A persistência local guarda o token renovável. Depois de um HTTP 401, o transporte invalida o ID token, renova a sessão e tenta a requisição uma única vez.
 
@@ -33,6 +33,7 @@ Contas com CAPTCHA ou MFA adicional podem precisar concluir o fluxo no portal. E
 | `access` | `https://backend-bff-access.platform.hub.la/api/v1` |
 | `creators` | `https://backend-bff-creators.platform.hub.la/api/v1` |
 | `crm` | `https://backend-bff-web-crm.platform.hub.la/api/v1` |
+| `conversations` | `https://backend-bff-web-conversation.platform.hub.la/api/v1` |
 | `data` | `https://backend-bff-data.platform.hub.la/api/v1` |
 | `pay` | `https://bff-pay.platform.hub.la/v1` |
 | `member_portal` | `https://backend-bff-member-portal.platform.hub.la/api/v1` |
@@ -274,9 +275,44 @@ Valores enviados a `finance.withdraw` usam centavos. Moeda, valor, dispositivo e
 | POST | `functions` | `/userInfo/setBasicInfo/pt` | alteração confirmada |
 | POST | `functions` | `/userInfo/updateNotificationSettings/pt` | alteração confirmada |
 | GET | `web` | `/user/roleplay/collaborators` | leitura |
+| GET | `web` | `/user/roleplay/my-access` | leitura das contas acessíveis ao colaborador |
+| GET | `web` | `/user/roleplay/reference` | leitura da conta assumida |
+| POST | `web` | `/user/roleplay/sign-in` | troca de contexto explícita por `{roleplayUserId}`; retorna token customizado, nunca exibir |
 | POST | `web` | `/user/roleplay/collaborators` | alteração confirmada |
 | PUT | `web` | `/user/roleplay/collaborators` | alteração confirmada |
 | DELETE | `web` | `/user/roleplay/collaborators/{collaboratorId}/` | alteração confirmada |
+
+Um login somente colaborador pode receber 404 em `/business`; a sessão deve ser validada por uma lista não vazia em `/user/roleplay/my-access`. Ao escolher uma conta, o token customizado é enviado ao Firebase `accounts:signInWithCustomToken` e o novo token é usado em um cliente isolado. Não persistir nem registrar tokens ou assumir que `--profile` identifica a conta da operação: ele identifica a pessoa que fez login.
+
+## Carteira USD e pagamentos internacionais
+
+| Método | Serviço | Caminho | Classe |
+| --- | --- | --- | --- |
+| GET | `web` | `/financial-statement/balance?currency=USD` | saldo na moeda original |
+| GET | `web` | `/financial-statement/account-statement` | extrato com `currency=USD`, datas, limite e cursor |
+| GET | `web` | `/financial-statement/withdrawal/exchange-rate` | cotação **atual** de saque USD→BRL |
+| GET | `web` | `/terms/pending?required=false&includeRejected=true` | identificar termo `dollarWalletTerms` pendente |
+| GET | `web` | `/terms/{key}` | leitura do termo |
+
+`finance.wallet_report` percorre os cursores `cursors.after` dentro de uma janela de até 90 dias, valida a moeda de cada lançamento e preserva centavos assinados. O extrato pode misturar registros `movement` e `consolidated`: `totalsByTransactionType` agrupa **somente** os `consolidated`; movimentações individuais permanecem em `entries` e são contadas em `movementCount`, sem duplicar valores nem presumir sentido de débito/crédito. A cotação de saque não converte vendas históricas nem representa câmbio de cada transação. `sales list --wallet international` e `analytics get ... --wallet international` filtram a carteira; isso não substitui consultar a moeda de cada dado retornado. Aceitar termos ou sacar são operações separadas, nunca parte de uma leitura.
+
+O campo `balanceNow` do relatório é um retrato consultado no momento da chamada, não um saldo histórico ao fim do período do extrato. Não somá-lo aos lançamentos do intervalo para apresentar faturamento.
+
+## Hubla Agents
+
+As rotas abaixo foram observadas no bundle `https://app.hub.la/assets/index-CthLzO0j.js` e as listas principais foram testadas por leitura autenticada na conta proprietária. Métodos de escrita estão mapeados, mas **não foram executados em produção**. DTOs de criação/edição devem ser obtidos da tela atual antes de uma alteração; nomes e formatos internos podem mudar.
+
+| Recurso do catálogo | Serviço | Contratos observados |
+| --- | --- | --- |
+| `agents_workflows` | `crm` | `GET /workflows`, `GET /workflows/{id}`, `GET /workflows/products/{type}`; `POST /workflows`, `PUT/DELETE /workflows/{id}`, `PATCH /workflows/{id}/publish` e `/toggle-active`, `POST /workflows/{id}/sandbox` |
+| `agents_conversations` | `conversations` | `POST /conversations/list` (somente leitura), `GET /conversations/{id}` e `/{id}/messages`, `GET /conversations/attendants`; envio/edição/retry de mensagens e ações de arquivar, ler, assumir e transferir, todas com confirmação |
+| `agents_insights` | `crm`, `data` | `POST /workflows/executions/list` e `/summary/{errors,success-rate,total}` (leituras); `POST /query/{queryId}` (consultas do painel e oportunidades) |
+| `agents_brains` | `crm` | `GET /brains`, `GET /brains/{id}`, `/brains/sources/external`, `/{id}/plugins`; criação, edição, publicação, exclusão, fontes e plugins com confirmação |
+| `agents_personas` | `crm` | `GET /personas/tenant`; `POST /personas`, `PUT/DELETE /personas/{id}` com confirmação |
+| `agents_knowledge` | `crm` | `POST /knowledge/list` (leitura), `GET /knowledge/{id}`, `/knowledge-variables/knowledge/{id}`, `/knowledge-template/{id}`; criação, edição e exclusão com confirmação |
+| `agents_channels` | `crm` | `GET /channels`, `GET /channels/{id}`, `GET /channels/{id}/templates`; criação/exclusão de canais e gestão de modelos com confirmação |
+
+`Second Brain` usa `/brains`; bases de conhecimento do CRM usam `/knowledge`. Nenhuma API genérica de CRUD para `/agents` foi inferida a partir de uma única rota de edição específica. Conversas podem conter dados pessoais; limite a consulta e não registre respostas brutas em logs. As consultas do painel `data` são identificadas por UUIDs do bundle atual e precisam ser remapeadas caso o portal mude.
 
 ## Afiliados, cupons, vitrines e integrações
 

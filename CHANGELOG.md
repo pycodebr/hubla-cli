@@ -6,6 +6,19 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ## [Não lançado]
 
+### Adicionado
+
+- Versão de desenvolvimento `0.3.0.dev1` para instalação local, sem publicação de release ou tag.
+- Relatório paginado das carteiras BRL/USD, cotação atual de saque e filtros da carteira internacional nas vendas e métricas.
+- Seleção explícita de conta colaboradora por comando, com token temporário e verificação da conta assumida.
+- Hubla Agents: início, conversas, insights, oportunidades, fluxos de agentes, personas, Second Brain, bases de conhecimento e canais.
+
+### Corrigido
+
+- Login de colaborador sem negócio próprio, desde que a Hubla confirme acesso a outras contas.
+- Troca de conta colaboradora validada em leituras reais; o token de roleplay chega como texto puro (HTTP 201), não JSON.
+- Totais do extrato não duplicam registros de movimentação e a carteira de vendas usa `international` em minúsculas.
+
 ## [0.2.1] - 2026-09-04
 
 ### Adicionado

@@ -25,12 +25,17 @@ Inspect account settings and perform confirmed account changes.
 | `account.add_collaborator` | **alteração — `--confirm`** | `payload` |
 | `account.business` | leitura | — |
 | `account.collaborators` | leitura | — |
+| `account.identity` | leitura | — |
+| `account.my_access` | leitura | — |
 | `account.notifications` | leitura | — |
 | `account.payout` | leitura | — |
+| `account.pending_terms` | leitura | — |
 | `account.profile` | leitura | — |
 | `account.reference` | leitura | — |
 | `account.remove_collaborator` | **alteração — `--confirm`** | `collaborator_id` |
+| `account.roleplay_reference` | leitura | — |
 | `account.start_mfa` | **alteração — `--confirm`** | — |
+| `account.terms` | leitura | `key` |
 | `account.two_factor_devices` | leitura | — |
 | `account.update_collaborator` | **alteração — `--confirm`** | `payload` |
 | `account.update_email` | **alteração — `--confirm`** | `email` |
@@ -38,6 +43,115 @@ Inspect account settings and perform confirmed account changes.
 | `account.update_notifications` | **alteração — `--confirm`** | `payload` |
 | `account.update_profile` | **alteração — `--confirm`** | `payload` |
 | `account.verify_mfa` | **alteração — `--confirm`** | `payload` |
+
+## agents_brains
+
+Manage Second Brain records, knowledge sources and plugins.
+
+| Operação | Tipo | Parâmetros |
+| --- | --- | --- |
+| `agents_brains.add_source` | **alteração — `--confirm`** | `brain_id`, `kind`, `source` |
+| `agents_brains.add_sources` | **alteração — `--confirm`** | `brain_id`, `sources` |
+| `agents_brains.create` | **alteração — `--confirm`** | `payload` |
+| `agents_brains.delete` | **alteração — `--confirm`** | `brain_id` |
+| `agents_brains.external_sources` | leitura | `page?`, `page_size?`, `source_type?` |
+| `agents_brains.get` | leitura | `brain_id` |
+| `agents_brains.list` | leitura | `page?`, `page_size?`, `search?` |
+| `agents_brains.plugins` | leitura | `brain_id` |
+| `agents_brains.publish` | **alteração — `--confirm`** | `brain_id`, `force?` |
+| `agents_brains.remove_source` | **alteração — `--confirm`** | `brain_id`, `source_id`, `kind` |
+| `agents_brains.retry_source` | **alteração — `--confirm`** | `brain_id`, `source_id`, `kind` |
+| `agents_brains.set_plugin` | **alteração — `--confirm`** | `brain_id`, `app_type`, `enabled` |
+| `agents_brains.update` | **alteração — `--confirm`** | `brain_id`, `payload` |
+
+## agents_channels
+
+List and manage the channels and templates connected to agents.
+
+| Operação | Tipo | Parâmetros |
+| --- | --- | --- |
+| `agents_channels.create` | **alteração — `--confirm`** | `payload` |
+| `agents_channels.create_template` | **alteração — `--confirm`** | `channel_id`, `payload` |
+| `agents_channels.delete` | **alteração — `--confirm`** | `channel_id` |
+| `agents_channels.delete_template` | **alteração — `--confirm`** | `channel_id`, `template_id` |
+| `agents_channels.get` | leitura | `channel_id` |
+| `agents_channels.list` | leitura | `page?`, `page_size?`, `search?` |
+| `agents_channels.sandbox_template` | **alteração — `--confirm`** | `channel_id`, `template_id`, `recipient` |
+| `agents_channels.templates` | leitura | `channel_id`, `page?`, `page_size?` |
+| `agents_channels.update_template` | **alteração — `--confirm`** | `channel_id`, `template_id`, `payload` |
+
+## agents_conversations
+
+Read conversations and explicitly manage messages and assignments.
+
+| Operação | Tipo | Parâmetros |
+| --- | --- | --- |
+| `agents_conversations.archive` | **alteração — `--confirm`** | `conversation_id` |
+| `agents_conversations.attendants` | leitura | `page?`, `page_size?` |
+| `agents_conversations.edit_message` | **alteração — `--confirm`** | `conversation_id`, `message_id`, `payload` |
+| `agents_conversations.get` | leitura | `conversation_id` |
+| `agents_conversations.list` | leitura | `page?`, `page_size?`, `search?`, `channel_source_id?`, `channel_source_types?`, `role?`, `statuses?`, `read_status?`, `products?` |
+| `agents_conversations.mark_read` | **alteração — `--confirm`** | `conversation_id`, `message_id` |
+| `agents_conversations.messages` | leitura | `conversation_id`, `params?` |
+| `agents_conversations.retry_message` | **alteração — `--confirm`** | `conversation_id`, `message_id` |
+| `agents_conversations.send_message` | **alteração — `--confirm`** | `payload` |
+| `agents_conversations.suggestions` | **alteração — `--confirm`** | `conversation_id` |
+| `agents_conversations.take_over` | **alteração — `--confirm`** | `conversation_id` |
+| `agents_conversations.transfer` | **alteração — `--confirm`** | `conversation_id`, `assigned_id` |
+| `agents_conversations.unarchive` | **alteração — `--confirm`** | `conversation_id` |
+
+## agents_insights
+
+Inspect agent opportunities, execution counts and dashboard metrics.
+
+| Operação | Tipo | Parâmetros |
+| --- | --- | --- |
+| `agents_insights.execution_summary` | leitura | `metric`, `payload` |
+| `agents_insights.executions` | leitura | `payload` |
+| `agents_insights.home` | leitura | `start_date`, `end_date`, `timezone?` |
+| `agents_insights.opportunities` | leitura | `timezone?` |
+| `agents_insights.query` | leitura | `metric`, `payload` |
+
+## agents_knowledge
+
+List and manage CRM knowledge bases (distinct from brain sources).
+
+| Operação | Tipo | Parâmetros |
+| --- | --- | --- |
+| `agents_knowledge.create` | **alteração — `--confirm`** | `payload` |
+| `agents_knowledge.delete` | **alteração — `--confirm`** | `knowledge_id` |
+| `agents_knowledge.get` | leitura | `knowledge_id` |
+| `agents_knowledge.list` | leitura | `payload` |
+| `agents_knowledge.template` | leitura | `template_id` |
+| `agents_knowledge.update` | **alteração — `--confirm`** | `knowledge_id`, `payload` |
+| `agents_knowledge.variables` | leitura | `knowledge_id` |
+
+## agents_personas
+
+List and manage agent personas.
+
+| Operação | Tipo | Parâmetros |
+| --- | --- | --- |
+| `agents_personas.create` | **alteração — `--confirm`** | `payload` |
+| `agents_personas.delete` | **alteração — `--confirm`** | `persona_id` |
+| `agents_personas.list` | leitura | `page?`, `page_size?`, `search?` |
+| `agents_personas.update` | **alteração — `--confirm`** | `persona_id`, `payload` |
+
+## agents_workflows
+
+List and manage Hubla Agents workflows (Meus agentes).
+
+| Operação | Tipo | Parâmetros |
+| --- | --- | --- |
+| `agents_workflows.create` | **alteração — `--confirm`** | `payload` |
+| `agents_workflows.delete` | **alteração — `--confirm`** | `workflow_id`, `reason?` |
+| `agents_workflows.get` | leitura | `workflow_id` |
+| `agents_workflows.list` | leitura | `page?`, `page_size?`, `search?`, `workflow_type?`, `product_id?` |
+| `agents_workflows.products` | leitura | `workflow_type` |
+| `agents_workflows.publish` | **alteração — `--confirm`** | `workflow_id` |
+| `agents_workflows.sandbox` | **alteração — `--confirm`** | `workflow_id`, `recipient`, `parameters` |
+| `agents_workflows.toggle_active` | **alteração — `--confirm`** | `workflow_id`, `reason?` |
+| `agents_workflows.update` | **alteração — `--confirm`** | `workflow_id`, `payload` |
 
 ## affiliates
 
@@ -93,8 +207,10 @@ Inspect balances and movements and perform confirmed withdrawals.
 | `finance.invoice_movements` | leitura | `invoice_id` |
 | `finance.movements` | leitura | `params?` |
 | `finance.movements_export` | **alteração — `--confirm`** | `params?`, `receiver_email?` |
+| `finance.wallet_report` | leitura | `start_date`, `end_date`, `currency?`, `page_size?`, `include_exchange_rate?` |
 | `finance.withdraw` | **alteração — `--confirm`** | `amount_in_cents`, `currency?`, `validation_code?` |
 | `finance.withdrawal_details` | leitura | `withdrawal_id` |
+| `finance.withdrawal_exchange_rate` | leitura | — |
 
 ## groups
 

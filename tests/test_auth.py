@@ -184,3 +184,37 @@ def test_environment_factory_prefers_explicit_saved_session(
 
     assert auth._email == "profile@example.com"
     assert auth._refresh_token == "profile-token"
+
+
+def test_custom_token_creates_a_separate_renewable_roleplay_session() -> None:
+    session = FakeSession(
+        [
+            FakeResponse(
+                {
+                    "idToken": "scoped-id",
+                    "refreshToken": "scoped-refresh",
+                    "expiresIn": "3600",
+                    "localId": "owner-1",
+                }
+            ),
+        ]
+    )
+    auth = HublaAuth(sign_key="public-key", session=session)
+    tokens = auth.login_with_custom_token("roleplay-custom")
+
+    assert tokens.id_token == "scoped-id"
+    assert tokens.refresh_token == "scoped-refresh"
+    assert session.calls[0]["url"].endswith("accounts:signInWithCustomToken")
+    assert session.calls[0]["json"] == {
+        "token": "roleplay-custom",
+        "returnSecureToken": True,
+    }
+    assert auth.get_token() == "scoped-id"
+
+
+def test_custom_token_missing_rejected_without_network_call() -> None:
+    session = FakeSession([])
+    auth = HublaAuth(sign_key="public-key", session=session)
+    with pytest.raises(HublaAuthError, match="token"):
+        auth.login_with_custom_token("")
+    assert session.calls == []

@@ -33,6 +33,13 @@ def test_catalog_exposes_every_resource_and_operation_metadata() -> None:
 
     assert {
         "account",
+        "agents_brains",
+        "agents_channels",
+        "agents_conversations",
+        "agents_insights",
+        "agents_knowledge",
+        "agents_personas",
+        "agents_workflows",
         "affiliates",
         "analytics",
         "coupons",

@@ -87,6 +87,23 @@ def test_transport_returns_bytes_without_json_decoding() -> None:
     assert result == b"xlsx-data"
 
 
+def test_roleplay_sign_in_accepts_a_plain_text_token_with_http_201() -> None:
+    session = FakeSession(
+        [FakeResponse(201, ValueError("not json"), content=b"custom-token")]
+    )
+    transport = HublaTransport(FakeAuth(), session=session, request_id=False)
+
+    result = transport.request(
+        "web",
+        "POST",
+        "/user/roleplay/sign-in",
+        json={"roleplayUserId": "owner-1"},
+        response_type="text",
+    )
+
+    assert result == "custom-token"
+
+
 def test_transport_redacts_sensitive_error_fields() -> None:
     auth = FakeAuth()
     session = FakeSession(

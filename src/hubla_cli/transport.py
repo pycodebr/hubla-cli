@@ -20,6 +20,7 @@ BASE_URLS = {
     "access": "https://backend-bff-access.platform.hub.la/api/v1",
     "creators": "https://backend-bff-creators.platform.hub.la/api/v1",
     "crm": "https://backend-bff-web-crm.platform.hub.la/api/v1",
+    "conversations": "https://backend-bff-web-conversation.platform.hub.la/api/v1",
     "data": "https://backend-bff-data.platform.hub.la/api/v1",
     "pay": "https://bff-pay.platform.hub.la/v1",
     "member_portal": "https://backend-bff-member-portal.platform.hub.la/api/v1",

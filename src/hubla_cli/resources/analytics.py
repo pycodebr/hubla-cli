@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from hubla_cli.payloads import validate_wallet
 from hubla_cli.resources.base import ResourceBase
 
 
@@ -24,7 +25,13 @@ class AnalyticsResource(ResourceBase):
         payment_method: str | None = None,
     ) -> Any:
         body = self._offer_selection(offer_ids, has_selected_all)
-        body.update({"startDate": start_date, "endDate": end_date, "wallet": wallet})
+        body.update(
+            {
+                "startDate": start_date,
+                "endDate": end_date,
+                "wallet": validate_wallet(wallet),
+            }
+        )
         if period is not None:
             body["period"] = period
         if payment_method is not None:
@@ -119,7 +126,7 @@ class AnalyticsResource(ResourceBase):
             end_date=end_date,
             offer_ids=offer_ids,
             has_selected_all=has_selected_all,
-            wallet="INTERNATIONAL",
+            wallet="international",
         )
 
     def conversion_rate(

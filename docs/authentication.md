@@ -6,7 +6,7 @@
 2. O prompt de senha usa modo password do `prompt_toolkit`, exibindo um asterisco por caractere.
 3. O cliente obtém a configuração pública do Firebase em `https://app.hub.la/__/firebase/init.json`.
 4. E-mail e senha são enviados diretamente ao endpoint Firebase usado pelo portal.
-5. O ID token é usado para validar uma leitura de `/business`.
+5. O ID token valida `/business`. Para um login exclusivamente colaborador, um 404 nessa rota é aceito somente se `/user/roleplay/my-access` retornar ao menos uma conta acessível.
 6. Somente depois dessa validação o token renovável é persistido.
 7. A variável local que contém a senha é descartada ao sair do fluxo.
 
@@ -32,6 +32,12 @@ O transporte não implementa repetição automática genérica para timeout ou e
 ## Perfis
 
 Cada `--profile NOME` usa metadados e entrada de cofre próprios. Nomes são validados e não podem conter separador de diretório, o que impede escape do diretório de configuração.
+
+O perfil `default` pode usar `HUBLA_REFRESH_TOKEN` ou `HUBLA_EMAIL`/`HUBLA_PASSWORD` do ambiente. Um perfil nomeado **não** herda essas credenciais: exige seu próprio login salvo. Isso evita consultar ou alterar a conta errada quando o ambiente contém credenciais de outro proprietário.
+
+`--profile` escolhe a identidade que faz login. `--account USER_ID` escolhe, apenas durante um comando, uma conta presente em `account accessible` para a qual aquela identidade recebeu colaboração. O CLI verifica o `userId`, solicita um custom token em `POST /user/roleplay/sign-in`, troca esse token pela sessão Firebase oficial e confere `GET /user/roleplay/reference` antes de executar a ação. O token da conta assumida fica somente em memória, não substitui nem persiste o perfil de login. Não selecione contas por nome ambíguo.
+
+O fluxo de troca de conta foi testado com transportes simulados e validado com um login real de colaborador em leituras de status, produtos e workflows da conta selecionada. O endpoint `/user/roleplay/sign-in` retorna o custom token como texto puro em HTTP 201; ele deve ser lido como texto, sem tentar decodificar JSON ou registrar seu conteúdo. Alterações em produção não foram usadas para validar permissões de escrita.
 
 ## Ambientes automatizados
 

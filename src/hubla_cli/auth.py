@@ -16,6 +16,9 @@ FIREBASE_INIT_URL = "https://app.hub.la/__/firebase/init.json"
 IDENTITY_TOOLKIT_URL = (
     "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
 )
+CUSTOM_TOKEN_URL = (
+    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken"
+)
 SECURE_TOKEN_URL = "https://securetoken.googleapis.com/v1/token"  # nosec B105
 TOKEN_SAFETY_MARGIN_SECONDS = 60
 
@@ -123,6 +126,28 @@ class HublaAuth:
         """Validate email/password credentials and return a renewable session."""
         self._validate_password_credentials()
         self._tokens = self._sign_in()
+        return self._tokens
+
+    def login_with_custom_token(self, custom_token: str) -> AuthTokens:
+        """Exchange a Hubla roleplay token for an in-memory Firebase session."""
+        if not isinstance(custom_token, str) or not custom_token:
+            raise HublaAuthError("a Hubla não retornou token para a conta colaboradora")
+        try:
+            response = self._session.post(
+                CUSTOM_TOKEN_URL,
+                params={"key": self._api_key()},
+                json={"token": custom_token, "returnSecureToken": True},
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                timeout=self._timeout,
+            )
+        except requests.RequestException as exc:
+            raise HublaAuthError(
+                "não foi possível trocar a sessão colaboradora"
+            ) from exc
+        self._tokens = self._parse_tokens(response, "idToken", "refreshToken")
         return self._tokens
 
     def get_token(self, force_refresh: bool = False) -> str:

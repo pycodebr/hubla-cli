@@ -6,7 +6,7 @@
 
 Use sua conta Hubla pelo terminal ou por qualquer agente de IA com acesso ao computador.
 
-O Hubla CLI reúne autenticação, vendas, reembolsos, assinaturas, produtos, ofertas, turmas, membros, métricas, finanças, afiliados, cupons, vitrines, integrações e dados da conta em um único comando. Ele também instala uma [Agent Skill](https://agentskills.io/) para que o agente descubra os recursos e aplique as proteções corretas antes de agir.
+O Hubla CLI reúne autenticação, vendas, reembolsos, assinaturas, produtos, ofertas, turmas, membros, métricas, carteiras BRL/USD, acesso colaborador, Hubla Agents, afiliados, cupons, vitrines, integrações e dados da conta em um único comando. Ele também instala uma [Agent Skill](https://agentskills.io/) para que o agente descubra os recursos e aplique as proteções corretas antes de agir.
 
 > [!IMPORTANT]
 > Este é um projeto comunitário e **não oficial**, sem vínculo, suporte ou endosso da Hubla. Ele usa contratos observados no portal web, que podem mudar. Use apenas em uma conta que você tem autorização para acessar.
@@ -191,7 +191,36 @@ hubla-cli finance forecast
 
 # Projeção para datas específicas
 hubla-cli finance forecast --date 2026-09-30 --date 2026-10-31
+
+# Carteira em dólar e extrato consolidado (até 90 dias por consulta)
+hubla-cli finance balance --currency USD
+hubla-cli finance wallet-report --currency USD \
+  --start-date 2026-09-01T00:00:00-03:00 \
+  --end-date 2026-09-27T23:59:59-03:00
+
+# Vendas da carteira internacional
+hubla-cli sales list --wallet international --page-size 25
+
+# Hubla Agents
+hubla-cli agents home --start-date 2026-09-01 --end-date 2026-09-27
+hubla-cli agents list workflows
+hubla-cli agents list knowledge --page-size 10
+hubla-cli agents list conversations --page-size 10
+hubla-cli agents opportunities
 ```
+
+Uma pessoa que é apenas colaboradora pode receber 404 em `/business`, mas o login funciona se a Hubla confirmar acesso a outras contas. Use um perfil de login diferente do proprietário:
+
+```bash
+hubla-cli --profile equipe login
+hubla-cli --profile equipe account accessible
+hubla-cli --profile equipe --account USER_ID_DA_CONTA --json status
+hubla-cli --profile equipe --account USER_ID_DA_CONTA --json agents list workflows
+```
+
+O `USER_ID_DA_CONTA` deve vir exatamente da lista `account accessible`. `--account` vale apenas para o comando atual e não salva a sessão da conta assumida. Sem ele, o CLI usa o perfil de login e não muda silenciosamente de negócio. Perfis nomeados não herdam credenciais do ambiente pertencentes ao perfil padrão.
+
+Para Second Brain, personas, bases de conhecimento, canais, conversas, métricas e suas alterações, use `hubla-cli --json schema agents_brains` (ou `agents_workflows`, `agents_conversations`, `agents_insights`, `agents_personas`, `agents_knowledge`, `agents_channels`) e `hubla-cli --json call RECURSO OPERAÇÃO --params '{...}'`. Mudanças exigem `--confirm` após revisar o alvo. Os contratos são internos ao portal e os DTOs de escrita não foram testados com mutações em produção.
 
 Para agentes e scripts, coloque `--json` antes do grupo:
 
@@ -233,6 +262,7 @@ Resposta de erro:
 | `analytics` | Atalhos para indicadores. |
 | `finance` | Atalhos para saldo e movimentações. |
 | `account` | Atalhos para negócio e perfil. |
+| `agents` | Atalhos para Hubla Agents; gestão completa disponível no catálogo. |
 | `skill` | Instala ou verifica a skill nos agentes. |
 
 Opções globais:

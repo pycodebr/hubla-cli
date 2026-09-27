@@ -30,6 +30,10 @@ class FakeResource:
         self.calls.append(("business", {}))
         return self.result
 
+    def identity(self) -> Any:
+        self.calls.append(("identity", {}))
+        return self.result
+
     def refund(self, invoice_id: str, *, confirm: bool = False) -> Any:
         self.calls.append(("refund", {"invoice_id": invoice_id, "confirm": confirm}))
         return self.result
@@ -255,6 +259,70 @@ def test_status_accepts_refresh_token_from_environment(monkeypatch: Any) -> None
     payload = json.loads(result.stdout)
     assert payload["data"]["email"] == "environment@example.com"
     assert payload["data"]["source"] == "environment"
+
+
+def test_account_selection_is_explicit_and_scoped_to_one_command(
+    monkeypatch: Any,
+) -> None:
+    class ScopedClient(FakeClient):
+        def __init__(self) -> None:
+            super().__init__({"id": "owner-1"})
+            self.selected: list[str] = []
+
+        def assume_account(self, user_id: str) -> ScopedClient:
+            self.selected.append(user_id)
+            return self
+
+    client = ScopedClient()
+    monkeypatch.setenv("HUBLA_EMAIL", "example@example.com")
+    monkeypatch.setenv("HUBLA_REFRESH_TOKEN", "test-refresh")
+    monkeypatch.setattr(cli, "get_client", lambda profile: client)
+
+    selected = runner.invoke(cli.app, ["--account", "owner-1", "--json", "status"])
+    unselected = runner.invoke(cli.app, ["--json", "status"])
+
+    assert selected.exit_code == unselected.exit_code == 0
+    assert client.selected == ["owner-1"]
+    assert json.loads(selected.stdout)["data"]["selectedAccountUserId"] == "owner-1"
+    assert json.loads(unselected.stdout)["data"]["selectedAccountUserId"] is None
+
+
+def test_agents_knowledge_list_sends_portal_pagination_body(monkeypatch: Any) -> None:
+    class Knowledge:
+        def __init__(self) -> None:
+            self.payload: dict[str, Any] | None = None
+
+        def list(self, payload: dict[str, Any]) -> dict[str, Any]:
+            self.payload = payload
+            return {"items": [], "count": 0}
+
+    class Client:
+        agents_knowledge = Knowledge()
+
+    client = Client()
+    monkeypatch.setattr(cli, "get_client", lambda profile: client)
+    result = runner.invoke(
+        cli.app,
+        [
+            "--json",
+            "agents",
+            "list",
+            "knowledge",
+            "--page",
+            "2",
+            "--page-size",
+            "5",
+            "--search",
+            "guia",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert client.agents_knowledge.payload == {
+        "page": 2,
+        "pageSize": 5,
+        "search": "guia",
+    }
 
 
 def test_logout_does_not_claim_to_remove_environment_credentials(

@@ -44,6 +44,7 @@ members_app = typer.Typer(help="Membros e acessos.")
 analytics_app = typer.Typer(help="Indicadores da conta.")
 finance_app = typer.Typer(help="Saldo e movimentações financeiras.")
 account_app = typer.Typer(help="Dados da conta.")
+agents_app = typer.Typer(help="Hubla Agents: fluxos, conversas e conhecimento.")
 skill_app = typer.Typer(help="Instala e verifica a skill para agentes de IA.")
 
 app.add_typer(sales_app, name="sales")
@@ -54,6 +55,7 @@ app.add_typer(members_app, name="members")
 app.add_typer(analytics_app, name="analytics")
 app.add_typer(finance_app, name="finance")
 app.add_typer(account_app, name="account")
+app.add_typer(agents_app, name="agents")
 app.add_typer(skill_app, name="skill")
 
 
@@ -64,6 +66,7 @@ class RuntimeContext:
     profile: str
     json_output: bool
     console: Console
+    account: str | None = None
 
 
 def _version_callback(value: bool) -> None:
@@ -80,6 +83,11 @@ def root(
         "--profile",
         "-p",
         help="Perfil local para usar mais de uma conta.",
+    ),
+    account: str | None = typer.Option(
+        None,
+        "--account",
+        help="userId de uma conta acessível ao colaborador; vale só para este comando.",
     ),
     json_output: bool = typer.Option(
         False,
@@ -105,13 +113,14 @@ def root(
         profile=profile,
         json_output=json_output,
         console=Console(no_color=no_color),
+        account=account,
     )
     ctx.obj = runtime
     if ctx.invoked_subcommand is None:
         if not sys.stdin.isatty():
             typer.echo(ctx.get_help())
             return
-        _execute(ctx, lambda: run_tui(get_client(profile), console=runtime.console))
+        _execute(ctx, lambda: run_tui(_client(ctx), console=runtime.console))
 
 
 def _runtime(ctx: typer.Context) -> RuntimeContext:
@@ -275,6 +284,15 @@ def get_client(profile: str) -> HublaClient:
     return HublaClient.from_profile(profile=profile)
 
 
+def _client(ctx: typer.Context) -> HublaClient:
+    """Resolve a local login and an explicit, per-command collaborator account."""
+    runtime = _runtime(ctx)
+    client = get_client(runtime.profile)
+    if runtime.account is not None:
+        return client.assume_account(runtime.account)
+    return client
+
+
 def _environment_auth_configured() -> bool:
     return bool(
         os.getenv("HUBLA_REFRESH_TOKEN")
@@ -284,7 +302,7 @@ def _environment_auth_configured() -> bool:
 
 def verify_login(auth: HublaAuth) -> Any:
     """Verify that a Firebase session can read the associated Hubla account."""
-    return HublaClient(auth=auth).account.business()
+    return HublaClient(auth=auth).account.identity()
 
 
 @app.command("login")
@@ -339,7 +357,7 @@ def logout_command(ctx: typer.Context) -> None:
 
     def operation() -> None:
         runtime = _runtime(ctx)
-        if _environment_auth_configured():
+        if runtime.profile == "default" and _environment_auth_configured():
             raise CommandError(
                 "a autenticação vem do ambiente; remova HUBLA_REFRESH_TOKEN ou "
                 "HUBLA_EMAIL/HUBLA_PASSWORD no processo que executa o CLI"
@@ -360,13 +378,17 @@ def status_command(ctx: typer.Context) -> None:
 
     def operation() -> None:
         runtime = _runtime(ctx)
-        source = "environment" if _environment_auth_configured() else "saved_profile"
+        source = (
+            "environment"
+            if runtime.profile == "default" and _environment_auth_configured()
+            else "saved_profile"
+        )
         email = os.getenv("HUBLA_EMAIL") if source == "environment" else None
         if source == "saved_profile":
             credentials = CredentialStore(profile=runtime.profile).load()
             email = credentials.email if credentials else None
-        client = get_client(runtime.profile)
-        account = client.account.business()
+        client = _client(ctx)
+        account = client.account.identity()
         _emit_success(
             ctx,
             {
@@ -374,6 +396,7 @@ def status_command(ctx: typer.Context) -> None:
                 "profile": runtime.profile,
                 "email": email,
                 "source": source,
+                "selectedAccountUserId": runtime.account,
                 "account": account,
             },
             title="Status da conta",
@@ -402,7 +425,7 @@ def doctor_command(ctx: typer.Context) -> None:
             checks["firebase_public_config"]["ok"] = True
         except HublaError as exc:
             checks["firebase_public_config"]["error"] = str(exc)
-        if _environment_auth_configured():
+        if runtime.profile == "default" and _environment_auth_configured():
             checks["credentials"] = {
                 "ok": True,
                 "profile": runtime.profile,
@@ -422,7 +445,7 @@ def doctor_command(ctx: typer.Context) -> None:
 
         if checks["credentials"]["ok"]:
             try:
-                get_client(runtime.profile).account.business()
+                _client(ctx).account.identity()
                 checks["account"] = {"ok": True}
             except (HublaError, ValueError, OSError) as exc:
                 checks["account"]["error"] = str(exc)
@@ -521,13 +544,12 @@ def call_command(
 
     def operation() -> None:
         parsed = _parse_object(params, "--params")
-        runtime = _runtime(ctx)
         operation_metadata = _catalog_operation(resource, operation_name)
         selected_output = output
         if operation_metadata["binary"]:
             selected_output = _preflight_binary_output(output, force=force)
         result = invoke_resource(
-            get_client(runtime.profile),
+            _client(ctx),
             resource,
             operation_name,
             parsed,
@@ -563,7 +585,6 @@ def api_command(
     """Faz uma chamada avançada a um BFF oficial, com hosts bloqueados."""
 
     def operation() -> None:
-        runtime = _runtime(ctx)
         if service not in BASE_URLS:
             raise CommandError(f"serviço desconhecido: {service}")
         selected_method = method.upper()
@@ -577,7 +598,7 @@ def api_command(
         selected_output = output
         if bytes_output:
             selected_output = _preflight_binary_output(output, force=force)
-        client = get_client(runtime.profile)
+        client = _client(ctx)
         response_type = "bytes" if bytes_output else "json"
         if selected_method == "GET":
             result = client.request(
@@ -608,7 +629,7 @@ def api_command(
 def tui_command(ctx: typer.Context) -> None:
     """Abre a interface interativa e segura de consultas."""
     runtime = _runtime(ctx)
-    _execute(ctx, lambda: run_tui(get_client(runtime.profile), console=runtime.console))
+    _execute(ctx, lambda: run_tui(_client(ctx), console=runtime.console))
 
 
 @skill_app.command("install")
@@ -670,6 +691,7 @@ def sales_list_command(
     payment_method: list[str] | None = typer.Option(None, "--method"),
     search: str = typer.Option("", "--search"),
     offer_id: list[str] | None = typer.Option(None, "--offer-id"),
+    wallet: str | None = typer.Option(None, "--wallet"),
     all_offers: bool = typer.Option(False, "--all-offers"),
     page: int = typer.Option(1, "--page", min=1),
     page_size: int = typer.Option(25, "--page-size", min=1, max=500),
@@ -677,7 +699,7 @@ def sales_list_command(
     """Lista e filtra vendas."""
 
     def operation() -> None:
-        client = get_client(_runtime(ctx).profile)
+        client = _client(ctx)
         result = client.sales.list(
             start_date=start_date,
             end_date=end_date,
@@ -686,6 +708,7 @@ def sales_list_command(
             methods=payment_method,
             search=search,
             offer_ids=offer_id,
+            wallet=wallet,
             has_selected_all=True if all_offers else None,
             page=page,
             page_size=page_size,
@@ -702,7 +725,7 @@ def sales_get_command(ctx: typer.Context, invoice_id: str) -> None:
         ctx,
         lambda: _emit_success(
             ctx,
-            get_client(_runtime(ctx).profile).sales.get(invoice_id),
+            _client(ctx).sales.get(invoice_id),
             title="Venda",
         ),
     )
@@ -714,14 +737,16 @@ def sales_summaries_command(
     start_date: str | None = typer.Option(None, "--start-date"),
     end_date: str | None = typer.Option(None, "--end-date"),
     offer_id: list[str] | None = typer.Option(None, "--offer-id"),
+    wallet: str | None = typer.Option(None, "--wallet"),
 ) -> None:
     """Mostra os totais de vendas para o filtro informado."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).sales.summaries(
+        result = _client(ctx).sales.summaries(
             start_date=start_date,
             end_date=end_date,
             offer_ids=offer_id,
+            wallet=wallet,
         )
         _emit_success(ctx, result, title="Resumo de vendas")
 
@@ -737,7 +762,7 @@ def sales_refund_command(
     """Reembolsa uma venda somente com confirmação explícita."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).sales.refund(
+        result = _client(ctx).sales.refund(
             invoice_id,
             confirm=confirm,
         )
@@ -755,7 +780,7 @@ def refunds_list_command(
     """Lista solicitações de reembolso do vendedor."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).refunds.list(
+        result = _client(ctx).refunds.list(
             page=page,
             page_size=page_size,
         )
@@ -771,7 +796,7 @@ def refunds_get_command(ctx: typer.Context, refund_id: str) -> None:
         ctx,
         lambda: _emit_success(
             ctx,
-            get_client(_runtime(ctx).profile).refunds.get(refund_id),
+            _client(ctx).refunds.get(refund_id),
             title="Solicitação de reembolso",
         ),
     )
@@ -784,7 +809,7 @@ def _refund_decision(
     confirm: bool,
 ) -> None:
     def operation() -> None:
-        resource = get_client(_runtime(ctx).profile).refunds
+        resource = _client(ctx).refunds
         result = getattr(resource, action)(refund_id, confirm=confirm)
         _emit_success(ctx, result, title="Reembolso atualizado")
 
@@ -826,7 +851,7 @@ def subscriptions_list_command(
     """Lista e filtra assinaturas."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).subscriptions.list(
+        result = _client(ctx).subscriptions.list(
             start_date=start_date,
             end_date=end_date,
             statuses=status,
@@ -848,7 +873,7 @@ def subscriptions_get_command(ctx: typer.Context, subscription_id: str) -> None:
         ctx,
         lambda: _emit_success(
             ctx,
-            get_client(_runtime(ctx).profile).subscriptions.get(subscription_id),
+            _client(ctx).subscriptions.get(subscription_id),
             title="Assinatura",
         ),
     )
@@ -864,7 +889,7 @@ def products_list_command(
     """Lista produtos."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).products.list(
+        result = _client(ctx).products.list(
             types=product_type,
             page=page,
             page_size=page_size,
@@ -881,7 +906,7 @@ def products_get_command(ctx: typer.Context, product_id: str) -> None:
         ctx,
         lambda: _emit_success(
             ctx,
-            get_client(_runtime(ctx).profile).products.get(product_id),
+            _client(ctx).products.get(product_id),
             title="Produto",
         ),
     )
@@ -898,7 +923,7 @@ def products_offers_command(
     """Lista as ofertas de um produto."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).products.list_offers(
+        result = _client(ctx).products.list_offers(
             product_id,
             page=page,
             page_size=page_size,
@@ -919,7 +944,7 @@ def products_cohorts_command(
     """Lista as turmas de um produto."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).products.list_cohorts(
+        result = _client(ctx).products.list_cohorts(
             product_id,
             page=page,
             page_size=page_size,
@@ -940,7 +965,7 @@ def members_list_command(
     """Lista membros ativos."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).members.active(
+        result = _client(ctx).members.active(
             product_id=product_id,
             search=search,
             page=page,
@@ -962,7 +987,7 @@ def members_deactivated_command(
     """Lista membros desativados."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).members.deactivated(
+        result = _client(ctx).members.deactivated(
             product_id=product_id,
             search=search,
             page=page,
@@ -980,7 +1005,7 @@ def members_pending_command(ctx: typer.Context) -> None:
         ctx,
         lambda: _emit_success(
             ctx,
-            get_client(_runtime(ctx).profile).members.pending_invites(),
+            _client(ctx).members.pending_invites(),
             title="Convites pendentes",
         ),
     )
@@ -999,6 +1024,7 @@ def analytics_get_command(
     end_date: str = typer.Option(..., "--end-date"),
     period: str | None = typer.Option(None, "--period"),
     offer_id: list[str] | None = typer.Option(None, "--offer-id"),
+    wallet: str | None = typer.Option(None, "--wallet"),
 ) -> None:
     """Consulta um indicador por período."""
 
@@ -1023,7 +1049,11 @@ def analytics_get_command(
             if not period:
                 raise CommandError("net_revenue exige --period")
             kwargs["period"] = period
-        resource = get_client(_runtime(ctx).profile).analytics
+        if wallet is not None:
+            if metric in {"average_ticket_by_currency", "abandoned_checkouts"}:
+                raise CommandError(f"{metric} não aceita --wallet")
+            kwargs["wallet"] = wallet
+        resource = _client(ctx).analytics
         result = getattr(resource, metric)(**kwargs)
         _emit_success(ctx, result, title=f"Indicador: {metric}")
 
@@ -1047,7 +1077,7 @@ def finance_forecast_command(
     """Projeta o saldo sacável em datas futuras a partir do retrato atual."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).finance.availability_forecast(
+        result = _client(ctx).finance.availability_forecast(
             target_dates=target_dates,
             currency=currency,
             timezone=timezone,
@@ -1067,8 +1097,34 @@ def finance_balance_command(
         ctx,
         lambda: _emit_success(
             ctx,
-            get_client(_runtime(ctx).profile).finance.balance(currency),
+            _client(ctx).finance.balance(currency),
             title="Saldo",
+        ),
+    )
+
+
+@finance_app.command("wallet-report")
+def finance_wallet_report_command(
+    ctx: typer.Context,
+    start_date: str = typer.Option(..., "--start-date"),
+    end_date: str = typer.Option(..., "--end-date"),
+    currency: str = typer.Option("USD", "--currency"),
+    page_size: int = typer.Option(100, "--page-size", min=1, max=100),
+    exchange_rate: bool = typer.Option(False, "--exchange-rate"),
+) -> None:
+    """Extrato paginado e totais assinados da carteira em uma moeda."""
+    _execute(
+        ctx,
+        lambda: _emit_success(
+            ctx,
+            _client(ctx).finance.wallet_report(
+                start_date=start_date,
+                end_date=end_date,
+                currency=currency,
+                page_size=page_size,
+                include_exchange_rate=exchange_rate,
+            ),
+            title="Relatório da carteira",
         ),
     )
 
@@ -1081,7 +1137,7 @@ def finance_statement_command(
     """Mostra o extrato financeiro."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).finance.account_statement(
+        result = _client(ctx).finance.account_statement(
             params=_parse_object(params, "--params")
         )
         _emit_success(ctx, result, title="Extrato")
@@ -1097,7 +1153,7 @@ def finance_movements_command(
     """Lista movimentações financeiras."""
 
     def operation() -> None:
-        result = get_client(_runtime(ctx).profile).finance.movements(
+        result = _client(ctx).finance.movements(
             params=_parse_object(params, "--params")
         )
         _emit_success(ctx, result, title="Movimentações")
@@ -1107,12 +1163,12 @@ def finance_movements_command(
 
 @account_app.command("show")
 def account_show_command(ctx: typer.Context) -> None:
-    """Mostra os dados do negócio conectado."""
+    """Mostra o negócio conectado ou as contas acessíveis ao colaborador."""
     _execute(
         ctx,
         lambda: _emit_success(
             ctx,
-            get_client(_runtime(ctx).profile).account.business(),
+            _client(ctx).account.identity(),
             title="Conta Hubla",
         ),
     )
@@ -1125,8 +1181,93 @@ def account_profile_command(ctx: typer.Context) -> None:
         ctx,
         lambda: _emit_success(
             ctx,
-            get_client(_runtime(ctx).profile).account.profile(),
+            _client(ctx).account.profile(),
             title="Perfil",
+        ),
+    )
+
+
+@account_app.command("accessible")
+def account_accessible_command(ctx: typer.Context) -> None:
+    """Lista as contas às quais o usuário colaborador tem acesso."""
+    _execute(
+        ctx,
+        lambda: _emit_success(
+            ctx,
+            _client(ctx).account.my_access(),
+            title="Contas acessíveis",
+        ),
+    )
+
+
+@agents_app.command("list")
+def agents_list_command(
+    ctx: typer.Context,
+    kind: str = typer.Argument(
+        help="workflows, brains, personas, knowledge, channels ou conversations"
+    ),
+    page: int = typer.Option(1, "--page", min=1),
+    page_size: int = typer.Option(25, "--page-size", min=1, max=500),
+    search: str = typer.Option("", "--search"),
+) -> None:
+    """Lista um dos recursos principais do Hubla Agents."""
+
+    def operation() -> None:
+        selected = {
+            "workflows": "agents_workflows",
+            "brains": "agents_brains",
+            "personas": "agents_personas",
+            "knowledge": "agents_knowledge",
+            "channels": "agents_channels",
+            "conversations": "agents_conversations",
+        }.get(kind)
+        if selected is None:
+            raise CommandError(
+                "kind deve ser workflows, brains, personas, knowledge, "
+                "channels ou conversations"
+            )
+        resource = getattr(_client(ctx), selected)
+        if kind == "knowledge":
+            result = resource.list(
+                {"page": page, "pageSize": page_size, "search": search}
+            )
+        else:
+            result = resource.list(page=page, page_size=page_size, search=search)
+        _emit_success(
+            ctx,
+            result,
+            title=f"Hubla Agents: {kind}",
+        )
+
+    _execute(ctx, operation)
+
+
+@agents_app.command("opportunities")
+def agents_opportunities_command(ctx: typer.Context) -> None:
+    """Consulta oportunidades identificadas pelos agentes."""
+    _execute(
+        ctx,
+        lambda: _emit_success(
+            ctx,
+            _client(ctx).agents_insights.opportunities(),
+            title="Oportunidades dos agentes",
+        ),
+    )
+
+
+@agents_app.command("home")
+def agents_home_command(
+    ctx: typer.Context,
+    start_date: str = typer.Option(..., "--start-date", help="Data YYYY-MM-DD."),
+    end_date: str = typer.Option(..., "--end-date", help="Data YYYY-MM-DD."),
+) -> None:
+    """Consulta os indicadores da página inicial do Hubla Agents."""
+    _execute(
+        ctx,
+        lambda: _emit_success(
+            ctx,
+            _client(ctx).agents_insights.home(start_date=start_date, end_date=end_date),
+            title="Início do Hubla Agents",
         ),
     )
 

@@ -2,6 +2,15 @@
 
 from hubla_cli.resources.account import AccountResource
 from hubla_cli.resources.affiliates import AffiliatesResource
+from hubla_cli.resources.agents import (
+    AgentsBrainsResource,
+    AgentsChannelsResource,
+    AgentsConversationsResource,
+    AgentsInsightsResource,
+    AgentsKnowledgeResource,
+    AgentsPersonasResource,
+    AgentsWorkflowsResource,
+)
 from hubla_cli.resources.analytics import AnalyticsResource
 from hubla_cli.resources.coupons import CouponsResource
 from hubla_cli.resources.finance import FinanceResource
@@ -19,6 +28,13 @@ from hubla_cli.resources.subscriptions import SubscriptionsResource
 
 __all__ = [
     "AccountResource",
+    "AgentsBrainsResource",
+    "AgentsChannelsResource",
+    "AgentsConversationsResource",
+    "AgentsInsightsResource",
+    "AgentsKnowledgeResource",
+    "AgentsPersonasResource",
+    "AgentsWorkflowsResource",
     "AffiliatesResource",
     "AnalyticsResource",
     "CouponsResource",

@@ -46,6 +46,125 @@ class FinanceResource(ResourceBase):
         params = {"currency": currency} if currency else None
         return self._call("web", "GET", "/financial-statement/balance", params=params)
 
+    def withdrawal_exchange_rate(self) -> Any:
+        """Read the current USD-to-BRL withdrawal quote, not a historic FX rate."""
+        return self._call("web", "GET", "/financial-statement/withdrawal/exchange-rate")
+
+    def wallet_report(
+        self,
+        *,
+        start_date: str,
+        end_date: str,
+        currency: str = "USD",
+        page_size: int = 100,
+        include_exchange_rate: bool = False,
+    ) -> dict[str, Any]:
+        """Read a wallet statement; total only consolidated entries by type."""
+        if currency not in {"BRL", "USD"}:
+            raise ValueError("currency deve ser BRL ou USD")
+        if include_exchange_rate and currency != "USD":
+            raise ValueError("a cotação de saque só se aplica à carteira USD")
+        if not 1 <= page_size <= 100:
+            raise ValueError("page_size deve estar entre 1 e 100")
+        try:
+            start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+            end = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            if start >= end or end - start > timedelta(days=90):
+                raise ValueError("o período deve ser positivo e ter até 90 dias")
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "start_date e end_date devem ser ISO 8601, com o mesmo tipo de fuso, "
+                "em um período de até 90 dias"
+            ) from exc
+
+        entries: list[dict[str, Any]] = []
+        totals: dict[str, dict[str, int]] = {}
+        movement_count = 0
+        consolidated_count = 0
+        seen_cursors: set[str] = set()
+        cursor: str | None = None
+        while True:
+            params: dict[str, Any] = {
+                "startDate": start_date,
+                "endDate": end_date,
+                "limit": page_size,
+                "currency": currency,
+            }
+            if cursor:
+                params["after"] = cursor
+            page = self.account_statement(params=params)
+            if not isinstance(page, Mapping) or not isinstance(
+                page.get("entries"), list
+            ):
+                raise HublaContractError("extrato da carteira com formato inválido")
+            for entry in page["entries"]:
+                if not isinstance(entry, Mapping):
+                    raise HublaContractError("lançamento da carteira inválido")
+                consolidated = entry.get("consolidated")
+                movement = entry.get("movement")
+                if consolidated is not None and movement is not None:
+                    raise HublaContractError("lançamento com dois tipos de registro")
+                if consolidated is not None:
+                    if not isinstance(consolidated, Mapping):
+                        raise HublaContractError("lançamento consolidado inválido")
+                    record = consolidated
+                elif movement is not None:
+                    if not isinstance(movement, Mapping):
+                        raise HublaContractError("movimentação da carteira inválida")
+                    record = movement
+                else:
+                    raise HublaContractError("lançamento sem dados financeiros")
+                if record.get("currency") != currency:
+                    raise HublaContractError("o extrato misturou moedas diferentes")
+                amount = _parse_cents(
+                    record.get("amountCents"), "valor do extrato inválido"
+                )
+                if consolidated is not None:
+                    transaction_type = consolidated.get("transactionType")
+                    if not isinstance(transaction_type, str) or not transaction_type:
+                        raise HublaContractError("tipo de transação inválido")
+                    group = totals.setdefault(
+                        transaction_type, {"count": 0, "amountCents": 0}
+                    )
+                    group["count"] += 1
+                    group["amountCents"] += amount
+                    consolidated_count += 1
+                else:
+                    # Debit/credit direction depends on the account. Do not add
+                    # raw movements to consolidated totals and double-count cash.
+                    movement_count += 1
+                entries.append(dict(entry))
+            cursors = page.get("cursors") or {}
+            if not isinstance(cursors, Mapping):
+                raise HublaContractError("cursor do extrato inválido")
+            next_cursor = cursors.get("after")
+            if not next_cursor:
+                break
+            if not isinstance(next_cursor, str) or next_cursor in seen_cursors:
+                raise HublaContractError("cursor do extrato inválido ou repetido")
+            if not page["entries"]:
+                raise HublaContractError("extrato vazio com paginação pendente")
+            seen_cursors.add(next_cursor)
+            cursor = next_cursor
+
+        balance = self.balance(currency)
+        if not isinstance(balance, Mapping) or balance.get("currency") != currency:
+            raise HublaContractError("o saldo não corresponde à moeda solicitada")
+        report: dict[str, Any] = {
+            "currency": currency,
+            "startDate": start_date,
+            "endDate": end_date,
+            "balanceNow": dict(balance),
+            "entryCount": len(entries),
+            "consolidatedCount": consolidated_count,
+            "movementCount": movement_count,
+            "totalsByTransactionType": totals,
+            "entries": entries,
+        }
+        if include_exchange_rate:
+            report["withdrawalExchangeRate"] = self.withdrawal_exchange_rate()
+        return report
+
     def account_statement(
         self,
         *,

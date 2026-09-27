@@ -4,7 +4,7 @@ description: Use when a user wants to consultar ou gerenciar sua própria conta 
 license: MIT
 compatibility: Requer o executável hubla-cli instalado, acesso à internet e uma conta Hubla autorizada pelo usuário.
 metadata:
-  version: "0.2.1"
+  version: "0.3.0.dev1"
 ---
 
 # Hubla CLI
@@ -51,6 +51,15 @@ hubla-cli --profile trabalho login
 hubla-cli --profile trabalho --json status
 ```
 
+`--profile` seleciona o login, não o negócio acessado. Perfis nomeados usam exclusivamente suas credenciais salvas e nunca herdam `HUBLA_EMAIL`/`HUBLA_PASSWORD` do ambiente padrão. Para um usuário somente colaborador, o CLI aceita 404 em `/business` apenas quando `/user/roleplay/my-access` confirma ao menos uma conta. Após o login pelo próprio usuário:
+
+```bash
+hubla-cli --profile trabalho --json account accessible
+hubla-cli --profile trabalho --account USER_ID --json status
+```
+
+Selecione `USER_ID` exatamente da lista de contas acessíveis. `--account` assume aquela conta **somente neste comando**, valida o retorno de `/user/roleplay/reference` e nunca salva o token da conta assumida. Repita `--profile` e `--account` em cada chamada seguinte. O fluxo foi validado com uma conta de colaborador real em consultas somente de leitura; permissões específicas e escritas dependem do acesso concedido. Não execute uma alteração sem conferir o perfil, o `userId` e a permissão da conta-alvo. Se a conta colaboradora ainda não estiver autenticada, peça ao usuário para executar `hubla-cli --profile trabalho login` em outro terminal e aguarde `autenticado`; nunca leia senhas de `.env`.
+
 ## Descoberta antes da execução
 
 Consulte o catálogo em vez de adivinhar nomes ou parâmetros:
@@ -80,7 +89,17 @@ hubla-cli --json products cohorts PRODUCT_ID
 hubla-cli --json members list --product-id PRODUCT_ID
 hubla-cli --json finance balance
 hubla-cli --json finance forecast
+hubla-cli --json finance balance --currency USD
+hubla-cli --json agents list workflows
+hubla-cli --json agents list knowledge --page-size 10
+hubla-cli --json agents home --start-date 2026-09-01 --end-date 2026-09-27
+hubla-cli --json agents list conversations --page-size 10
+hubla-cli --json agents opportunities
 ```
+
+Para pagamentos internacionais, use `sales list --wallet international` (minúsculas) e `finance wallet-report --currency USD --start-date ISO --end-date ISO`. O extrato deve ter no máximo 90 dias; valores em centavos assinados ficam na moeda original. Registros `movement` não entram nos totais `consolidated`, e `balanceNow` é saldo atual, não histórico. `--exchange-rate` inclui apenas a cotação atual de saque USD→BRL, não um câmbio histórico. `account.pending_terms` permite verificar se a carteira USD depende do termo `dollarWalletTerms`; não aceite termos sem autorização explícita.
+
+Hubla Agents fica no catálogo `agents_workflows`, `agents_conversations`, `agents_insights`, `agents_brains` (Second Brain), `agents_knowledge` (bases de conhecimento), `agents_personas` e `agents_channels`. Execute `hubla-cli --json schema agents_brains` e `call` para operações específicas. Listagem de conversas e consultas de insights usam POST de **leitura** já classificado no catálogo; envio de mensagem, sandbox, publicação, exclusão e demais alterações exigem `--confirm`. Os contratos são internos ao portal; confira IDs, corpo e permissões antes de escrever.
 
 Datas devem ser ISO 8601 com o fuso necessário para a pergunta do usuário:
 

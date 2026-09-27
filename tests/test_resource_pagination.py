@@ -101,7 +101,7 @@ def test_sales_iter_all_is_deferred_and_preserves_every_filter() -> None:
         utm_content="content",
         utm_term="term",
         date_range_by="createdAt",
-        wallet="wallet-1",
+        wallet="international",
         page_size=1,
         order_by="paidAt",
         order_direction="ASC",
@@ -130,7 +130,7 @@ def test_sales_iter_all_is_deferred_and_preserves_every_filter() -> None:
             "utmContent": "content",
             "utmTerm": "term",
             "dateRangeBy": "createdAt",
-            "wallet": "wallet-1",
+            "wallet": "international",
         }
 
 

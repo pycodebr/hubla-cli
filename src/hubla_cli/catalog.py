@@ -10,6 +10,13 @@ from hubla_cli.errors import CommandError
 from hubla_cli.resources import (
     AccountResource,
     AffiliatesResource,
+    AgentsBrainsResource,
+    AgentsChannelsResource,
+    AgentsConversationsResource,
+    AgentsInsightsResource,
+    AgentsKnowledgeResource,
+    AgentsPersonasResource,
+    AgentsWorkflowsResource,
     AnalyticsResource,
     CouponsResource,
     FinanceResource,
@@ -26,6 +33,13 @@ from hubla_cli.resources import (
 
 RESOURCE_CLASSES = {
     "account": AccountResource,
+    "agents_brains": AgentsBrainsResource,
+    "agents_channels": AgentsChannelsResource,
+    "agents_conversations": AgentsConversationsResource,
+    "agents_insights": AgentsInsightsResource,
+    "agents_knowledge": AgentsKnowledgeResource,
+    "agents_personas": AgentsPersonasResource,
+    "agents_workflows": AgentsWorkflowsResource,
     "affiliates": AffiliatesResource,
     "analytics": AnalyticsResource,
     "coupons": CouponsResource,

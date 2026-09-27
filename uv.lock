@@ -488,7 +488,7 @@ wheels = [
 
 [[package]]
 name = "hubla-cli"
-version = "0.2.1"
+version = "0.3.0.dev1"
 source = { editable = "." }
 dependencies = [
     { name = "keyring" },

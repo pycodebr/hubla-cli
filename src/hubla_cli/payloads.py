@@ -17,6 +17,13 @@ def offer_selection(
     return {"offerIds": ids, "hasSelectedAll": has_selected_all}
 
 
+def validate_wallet(wallet: str | None) -> str | None:
+    """Require the lowercase wallet identifiers used by Hubla's sales portal."""
+    if wallet is not None and wallet not in {"national", "international"}:
+        raise ValueError("wallet deve ser national ou international (minúsculas)")
+    return wallet
+
+
 def invoices_body(
     *,
     offer_ids: Sequence[str] | None,
@@ -56,7 +63,7 @@ def invoices_body(
                 "utmContent": utm_content,
                 "utmTerm": utm_term,
                 "dateRangeBy": date_range_by,
-                "wallet": wallet,
+                "wallet": validate_wallet(wallet),
             },
             "page": page,
             "pageSize": page_size,

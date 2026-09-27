@@ -52,8 +52,10 @@ class ContractTransport:
                 "availableInCents": 0,
                 "receivableInCents": 0,
                 "reservedInCents": 0,
-                "currency": "BRL",
+                "currency": (kwargs.get("params") or {}).get("currency", "BRL"),
             }
+        if path == "/financial-statement/account-statement":
+            return {"entries": []}
         if path == "/financial-statement/movements":
             return {"movements": []}
         return {"ok": True}
@@ -82,6 +84,8 @@ def _required_value(name: str, annotation: Any) -> Any:
         return {"memberId": "member-1", "currentCohorts": []}
     if name == "payload":
         return {"name": "Exemplo", "id": "item-1"}
+    if name in {"source", "parameters"}:
+        return {"id": "item-1"}
     if name == "filters" or name == "params":
         return {}
     if name in sequence_names:
@@ -92,9 +96,15 @@ def _required_value(name: str, annotation: Any) -> Any:
         return 1
     if name == "period":
         return "daily"
+    if name == "metric":
+        return "total"
+    if name == "sources":
+        return [{"id": "source-1"}]
     if name == "account_type":
         return "receivable"
-    if name in {"start_date", "end_date"}:
+    if name == "end_date":
+        return "2026-01-02T00:00:00-03:00"
+    if name == "start_date":
         return "2026-01-01T00:00:00-03:00"
     if annotation is bool:
         return False
@@ -116,6 +126,10 @@ def _required_kwargs(method: Any) -> dict[str, Any]:
                 parameter.name,
                 parameter.annotation,
             )
+    if method.__name__ == "query":
+        kwargs["metric"] = "opportunities"
+    if method.__name__ == "home":
+        kwargs.update(start_date="2026-01-01", end_date="2026-01-02")
     return kwargs
 
 
