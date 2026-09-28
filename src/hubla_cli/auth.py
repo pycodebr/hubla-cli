@@ -16,8 +16,9 @@ FIREBASE_INIT_URL = "https://app.hub.la/__/firebase/init.json"
 IDENTITY_TOOLKIT_URL = (
     "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
 )
+# Public Firebase endpoint, not an embedded credential.
 CUSTOM_TOKEN_URL = (
-    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken"
+    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken"  # nosec B105
 )
 SECURE_TOKEN_URL = "https://securetoken.googleapis.com/v1/token"  # nosec B105
 TOKEN_SAFETY_MARGIN_SECONDS = 60
