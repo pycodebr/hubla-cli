@@ -109,11 +109,10 @@ def test_generated_command_reference_is_current() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_development_version_and_latest_released_installer_are_explicit() -> None:
+def test_release_version_is_consistent_across_package_installers_and_skill() -> None:
     expected_toml = f'version = "{__version__}"'
-    latest_released_version = "0.2.1"
-    expected_bash = f"HUBLA_CLI_VERSION:-{latest_released_version}"
-    expected_powershell = f'else {{ "{latest_released_version}" }}'
+    expected_bash = f"HUBLA_CLI_VERSION:-{__version__}"
+    expected_powershell = f'else {{ "{__version__}" }}'
     expected_skill = f'version: "{__version__}"'
 
     assert expected_toml in (ROOT / "pyproject.toml").read_text(encoding="utf-8")

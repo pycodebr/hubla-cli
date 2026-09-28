@@ -6,9 +6,10 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ## [Não lançado]
 
+## [0.3.0] - 2026-09-27
+
 ### Adicionado
 
-- Versão de desenvolvimento `0.3.0.dev1` para instalação local, sem publicação de release ou tag.
 - Relatório paginado das carteiras BRL/USD, cotação atual de saque e filtros da carteira internacional nas vendas e métricas.
 - Seleção explícita de conta colaboradora por comando, com token temporário e verificação da conta assumida.
 - Hubla Agents: início, conversas, insights, oportunidades, fluxos de agentes, personas, Second Brain, bases de conhecimento e canais.
@@ -74,7 +75,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 - Agent Skill com instalação automática para harnesses compatíveis.
 - Testes, lint, build e CI multiplataforma.
 
-[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.2.1...HEAD
+[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/pycodebr/hubla-cli/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/pycodebr/hubla-cli/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/pycodebr/hubla-cli/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/pycodebr/hubla-cli/compare/v0.1.1...v0.1.2
