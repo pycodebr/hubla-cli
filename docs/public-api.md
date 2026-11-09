@@ -30,6 +30,8 @@ Os demais métodos não têm equivalente: em `public` falham com `PublicApiUnsup
 
 - Sem `dateStart`, a listagem de faturas da API pública devolve só os últimos dias. O portal devolvia o histórico
   inteiro; o CLI envia `dateStart=2015-01-01` quando `start_date` não é informado.
+- A API pública ignora o fuso de `dateStart`/`dateEnd` (`00:00-03:00` vira `00:00Z`). O CLI converte para UTC
+  toda data com fuso; datas sem fuso seguem como foram informadas.
 - A API pública lista BRL, USD e EUR juntos. `wallet="national"` filtra BRL e `wallet="international"` as demais
   moedas, localmente; sem `wallet`, vêm todas.
 - Filtros de UTM são aplicados localmente; `page_size` acima de 200 é montado localmente.

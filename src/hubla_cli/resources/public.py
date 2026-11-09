@@ -16,6 +16,7 @@ import math
 import os
 import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -126,6 +127,29 @@ def _statuses(statuses: Sequence[str] | None) -> builtins.list[str]:
     if statuses is None:
         return ["paid"]
     return [_STATUS_ALIASES.get(str(value), str(value)) for value in statuses]
+
+
+def _utc(value: str | None) -> str | None:
+    """ISO date-time with offset in UTC (``Z``).
+
+    The Public API ignores the offset of ``dateStart``/``dateEnd``: ``00:00-03:00``
+    is read as ``00:00Z`` and the BRT day is cut three hours early. Values
+    without an offset (plain dates or naive times) pass unchanged.
+    """
+    if not value or not isinstance(value, str):
+        return value
+    text = value.strip()
+    if "T" not in text:
+        return text
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    if parsed.tzinfo is None:
+        return text
+    utc = parsed.astimezone(timezone.utc)
+    milliseconds = f".{utc.microsecond // 1000:03d}" if utc.microsecond else ""
+    return utc.strftime("%Y-%m-%dT%H:%M:%S") + milliseconds + "Z"
 
 
 def _archived_param(archived: Any) -> str | None:
@@ -295,9 +319,9 @@ class PublicSalesResource(_PublicMixin, SalesResource):
             return None  # explicit empty selection: the portal returns nothing
         # Without dateStart the Public API answers only the last few days; the
         # portal answered the whole history. Keep the portal meaning.
-        filters["dateStart"] = start_date or ALL_TIME_START
+        filters["dateStart"] = _utc(start_date or ALL_TIME_START)
         if end_date:
-            filters["dateEnd"] = end_date
+            filters["dateEnd"] = _utc(end_date)
         status = _statuses(statuses)
         if status:
             filters["status"] = status
@@ -991,7 +1015,7 @@ class PublicSubscriptionsResource(_PublicMixin, SubscriptionsResource):
         ):
             value = kwargs.pop(source, None)
             if value:
-                filters[target] = value
+                filters[target] = _utc(value) if target.startswith("date") else value
         return self._public(
             "POST",
             "/v1/smart-installments/list",

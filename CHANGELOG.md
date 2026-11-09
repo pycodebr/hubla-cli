@@ -6,6 +6,15 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ## [Não lançado]
 
+## [0.4.1] - 2026-11-09
+
+### Corrigido
+
+- `dateStart`/`dateEnd` com fuso são convertidos para UTC antes de ir à API pública, que ignora o fuso do texto
+  e cortava o dia de Brasília três horas antes.
+- O catálogo de produtos da API pública inclui produtos do tipo combo (ofertas de combos ficavam fora de
+  `global_offers` e da conversão de IDs).
+
 ## [0.4.0] - 2026-11-09
 
 ### Adicionado
@@ -91,7 +100,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 - Agent Skill com instalação automática para harnesses compatíveis.
 - Testes, lint, build e CI multiplataforma.
 
-[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.4.0...HEAD
+[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/pycodebr/hubla-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/pycodebr/hubla-cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pycodebr/hubla-cli/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/pycodebr/hubla-cli/compare/v0.2.0...v0.2.1

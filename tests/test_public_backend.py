@@ -333,7 +333,7 @@ def test_sales_list_maps_filters_and_defaults_to_paid() -> None:
     body = client._public_transport.calls[0][2]["json"]
     assert body["filters"]["offerIds"] == ["offer-1"]
     assert body["filters"]["status"] == ["paid"]
-    assert body["filters"]["dateStart"] == "2026-11-01T00:00:00-03:00"
+    assert body["filters"]["dateStart"] == "2026-11-01T03:00:00Z"  # offset → UTC
     assert body["pagination"] == {"page": 1, "pageSize": 50}
     assert page["total"] == 1
     assert page["items"][0]["offers"][0]["id"] == "offer-1"
@@ -344,7 +344,7 @@ def test_sales_list_all_statuses_and_explicit_empty_selection() -> None:
     client.sales.list(statuses=[])
     filters = client._public_transport.calls[0][2]["json"]["filters"]
     assert "status" not in filters
-    assert filters["dateStart"] == "2015-01-01T00:00:00-03:00"  # whole history
+    assert filters["dateStart"] == "2015-01-01T03:00:00Z"  # whole history, in UTC
     assert client.sales.list(offer_ids=[], has_selected_all=False)["total"] == 0
     assert len(client._public_transport.calls) == 1
 
@@ -497,3 +497,13 @@ def test_subscriptions_by_buyer_come_from_invoices() -> None:
     assert row["lastChargeStatus"] == "paid"
     with pytest.raises(PublicApiUnsupported):
         client.subscriptions.list()
+
+
+def test_dates_with_offset_become_utc_and_plain_dates_pass() -> None:
+    from hubla_cli.resources.public import _utc
+
+    assert _utc("2026-11-08T23:59:59-03:00") == "2026-11-09T02:59:59Z"
+    assert _utc("2026-11-08T23:59:59.999-03:00") == "2026-11-09T02:59:59.999Z"
+    assert _utc("2026-11-08T03:00:00Z") == "2026-11-08T03:00:00Z"
+    assert _utc("2026-11-08") == "2026-11-08"
+    assert _utc("2026-11-08T10:00:00") == "2026-11-08T10:00:00"
