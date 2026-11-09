@@ -27,3 +27,12 @@ def prompt_password() -> str:
         is_password=True,
         style=_PROMPT_STYLE,
     )
+
+
+def prompt_api_token() -> str:
+    """Prompt for a Public API integration token without echoing it."""
+    return prompt(
+        "Token da API pública: ",
+        is_password=True,
+        style=_PROMPT_STYLE,
+    ).strip()

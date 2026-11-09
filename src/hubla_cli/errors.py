@@ -72,3 +72,7 @@ class MemberFilterIgnoredError(MemberLookupError):
 
 class AmbiguousMemberError(MemberLookupError):
     """Raised when more than one member matches the requested identity."""
+
+
+class PublicApiUnsupported(HublaError):
+    """Raised when an operation has no equivalent in Hubla's Public API."""

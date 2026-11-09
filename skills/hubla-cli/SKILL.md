@@ -4,7 +4,7 @@ description: Use when a user wants to consultar ou gerenciar sua própria conta 
 license: MIT
 compatibility: Requer o executável hubla-cli instalado, acesso à internet e uma conta Hubla autorizada pelo usuário.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # Hubla CLI
@@ -59,6 +59,15 @@ hubla-cli --profile trabalho --account USER_ID --json status
 ```
 
 Selecione `USER_ID` exatamente da lista de contas acessíveis. `--account` assume aquela conta **somente neste comando**, valida o retorno de `/user/roleplay/reference` e nunca salva o token da conta assumida. Repita `--profile` e `--account` em cada chamada seguinte. O fluxo foi validado com uma conta de colaborador real em consultas somente de leitura; permissões específicas e escritas dependem do acesso concedido. Não execute uma alteração sem conferir o perfil, o `userId` e a permissão da conta-alvo. Se a conta colaboradora ainda não estiver autenticada, peça ao usuário para executar `hubla-cli --profile trabalho login` em outro terminal e aguarde `autenticado`; nunca leia senhas de `.env`.
+
+## API pública oficial
+
+A Hubla está desativando o acesso aos BFFs do portal com login de usuário. Quando o usuário tiver um token de
+integração, prefira `--backend public` (só API pública) ou `--backend auto` (API pública no que ela cobre e portal
+no resto). Configure com `hubla-cli login --api-token` (o token é pedido de modo oculto; nunca o peça no chat) ou
+com `HUBLA_API_TOKEN` e `HUBLA_BACKEND` no ambiente. Cobertura, campos ausentes e diferenças: `docs/public-api.md`.
+Sem `start_date`, as vendas continuam vindo desde o início do histórico. Troca de turma, convites pendentes,
+finanças, conta, afiliados e Hubla Agents não existem na API pública.
 
 ## Descoberta antes da execução
 

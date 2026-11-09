@@ -45,6 +45,13 @@ O fluxo de troca de conta foi testado com transportes simulados e validado com u
 
 `HUBLA_SIGN_KEY` é opcional e apenas substitui a configuração pública descoberta. Uma chave de configuração Firebase exposta ao navegador não substitui as credenciais da conta.
 
+## API pública
+
+`hubla-cli login --api-token` pede o token de integração da API pública sem exibi-lo, faz uma leitura de teste e o
+salva no cofre do sistema (ou em `profiles/<perfil>.api.json` com permissão `0600`). `HUBLA_API_TOKEN` no ambiente
+tem prioridade. `hubla-cli logout --api-token` remove o token salvo. O token não expira por sessão: revogue-o no
+painel da Hubla se vazar.
+
 ## Logout
 
 `hubla-cli logout` remove primeiro a entrada correspondente do cofre e só então apaga os metadados do perfil. Se o cofre estiver bloqueado ou falhar, o comando retorna erro e preserva o perfil para não declarar um logout que não aconteceu. O comando não revoga sessões em outros dispositivos; para isso, use os controles oficiais da conta.

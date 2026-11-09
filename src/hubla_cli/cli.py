@@ -17,10 +17,11 @@ from rich.console import Console
 
 from hubla_cli.auth import FirebaseConfigResolver, HublaAuth
 from hubla_cli.catalog import build_catalog, invoke_resource
-from hubla_cli.client import HublaClient
-from hubla_cli.credentials import CredentialStore
+from hubla_cli.client import BACKENDS, HublaClient, resolve_backend
+from hubla_cli.credentials import ApiTokenStore, CredentialStore
 from hubla_cli.errors import CommandError, HublaError, HublaHttpError
-from hubla_cli.prompts import prompt_email, prompt_password
+from hubla_cli.prompts import prompt_api_token, prompt_email, prompt_password
+from hubla_cli.public_transport import PublicApiTransport
 from hubla_cli.resources.finance import DEFAULT_FINANCE_TIMEZONE
 from hubla_cli.skills import install_skill, skill_status
 from hubla_cli.transport import BASE_URLS
@@ -67,6 +68,7 @@ class RuntimeContext:
     json_output: bool
     console: Console
     account: str | None = None
+    backend: str | None = None
 
 
 def _version_callback(value: bool) -> None:
@@ -88,6 +90,14 @@ def root(
         None,
         "--account",
         help="userId de uma conta acessível ao colaborador; vale só para este comando.",
+    ),
+    backend: str | None = typer.Option(
+        None,
+        "--backend",
+        help=(
+            "portal (sessão do portal), public (só API pública com token) ou auto "
+            "(API pública quando houver equivalente). Padrão: HUBLA_BACKEND ou portal."
+        ),
     ),
     json_output: bool = typer.Option(
         False,
@@ -114,7 +124,10 @@ def root(
         json_output=json_output,
         console=Console(no_color=no_color),
         account=account,
+        backend=backend,
     )
+    if backend is not None and backend.strip().lower() not in BACKENDS:
+        raise typer.BadParameter("use portal, public ou auto", param_hint="--backend")
     ctx.obj = runtime
     if ctx.invoked_subcommand is None:
         if not sys.stdin.isatty():
@@ -279,16 +292,25 @@ def _prepare_result(
     return result
 
 
-def get_client(profile: str) -> HublaClient:
+def get_client(profile: str, backend: str | None = None) -> HublaClient:
     """Build the selected authenticated client. Kept separate for testing."""
-    return HublaClient.from_profile(profile=profile)
+    if backend is None:
+        return HublaClient.from_profile(profile=profile)
+    return HublaClient.from_profile(profile=profile, backend=backend)
 
 
 def _client(ctx: typer.Context) -> HublaClient:
     """Resolve a local login and an explicit, per-command collaborator account."""
     runtime = _runtime(ctx)
-    client = get_client(runtime.profile)
+    if runtime.backend is None:
+        client = get_client(runtime.profile)
+    else:
+        client = get_client(runtime.profile, runtime.backend)
     if runtime.account is not None:
+        if getattr(client, "backend", "portal") != "portal":
+            raise CommandError(
+                "--account usa a sessão do portal; a API pública usa o token da própria conta"
+            )
         return client.assume_account(runtime.account)
     return client
 
@@ -313,11 +335,35 @@ def login_command(
         "--email",
         help="E-mail da conta. A senha é sempre solicitada de modo interativo.",
     ),
+    api_token: bool = typer.Option(
+        False,
+        "--api-token",
+        help="Salva o token de integração da API pública (pedido de modo oculto).",
+    ),
 ) -> None:
     """Entra na Hubla e salva somente o token renovável, nunca a senha."""
 
     def operation() -> None:
         runtime = _runtime(ctx)
+        if api_token:
+            token = prompt_api_token()
+            transport = PublicApiTransport(token)
+            transport.request(
+                "POST", "/v1/products/list", json={"page": 1, "pageSize": 1}
+            )
+            storage = ApiTokenStore(profile=runtime.profile).save(token)
+            del token
+            _emit_success(
+                ctx,
+                {
+                    "authenticated": True,
+                    "profile": runtime.profile,
+                    "storage": storage,
+                    "backend": "public",
+                },
+                title="Token da API pública salvo",
+            )
+            return
         selected_email = (email or prompt_email()).strip()
         if not selected_email:
             raise CommandError("informe o e-mail da conta Hubla")
@@ -352,11 +398,24 @@ def login_command(
 
 
 @app.command("logout")
-def logout_command(ctx: typer.Context) -> None:
+def logout_command(
+    ctx: typer.Context,
+    api_token: bool = typer.Option(
+        False, "--api-token", help="Remove o token salvo da API pública."
+    ),
+) -> None:
     """Remove a sessão renovável salva para o perfil atual."""
 
     def operation() -> None:
         runtime = _runtime(ctx)
+        if api_token:
+            ApiTokenStore(profile=runtime.profile).delete()
+            _emit_success(
+                ctx,
+                {"publicApiToken": False, "profile": runtime.profile},
+                title="Token removido",
+            )
+            return
         if runtime.profile == "default" and _environment_auth_configured():
             raise CommandError(
                 "a autenticação vem do ambiente; remova HUBLA_REFRESH_TOKEN ou "
@@ -378,6 +437,22 @@ def status_command(ctx: typer.Context) -> None:
 
     def operation() -> None:
         runtime = _runtime(ctx)
+        if resolve_backend(runtime.backend) == "public":
+            client = _client(ctx)
+            probe = client.public_request(
+                "POST", "/v1/products/list", json={"page": 1, "pageSize": 1}
+            )
+            _emit_success(
+                ctx,
+                {
+                    "authenticated": True,
+                    "profile": runtime.profile,
+                    "backend": "public",
+                    "products": (probe or {}).get("total"),
+                },
+                title="Status da API pública",
+            )
+            return
         source = (
             "environment"
             if runtime.profile == "default" and _environment_auth_configured()
@@ -585,6 +660,25 @@ def api_command(
     """Faz uma chamada avançada a um BFF oficial, com hosts bloqueados."""
 
     def operation() -> None:
+        if service == "public":
+            selected = method.upper()
+            parsed_query = _parse_object(params, "--params")
+            try:
+                parsed_json = json.loads(body)
+            except json.JSONDecodeError as exc:
+                raise CommandError("--body não contém JSON válido") from exc
+            client = _client(ctx)
+            if getattr(client, "backend", "portal") == "portal":
+                client = get_client(_runtime(ctx).profile, "public")
+            result = client.public_request(
+                selected,
+                path,
+                params=parsed_query or None,
+                json=parsed_json,
+                confirm=confirm,
+            )
+            _emit_success(ctx, result, title=f"{selected} {path}")
+            return
         if service not in BASE_URLS:
             raise CommandError(f"serviço desconhecido: {service}")
         selected_method = method.upper()

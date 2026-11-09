@@ -152,6 +152,33 @@ Se a autenticação vier de variáveis de ambiente, `logout` não declara sucess
 
 Contas com CAPTCHA ou MFA não suportado devem concluir a verificação pelo portal oficial. O CLI não tenta contornar essas proteções.
 
+## API pública oficial (token de integração)
+
+A Hubla vai desativar o acesso aos BFFs do portal feito com login de usuário. O CLI passa a usar a
+[API pública oficial](https://backend-bff-public-api.platform.hub.la/swagger/v1#description/introduction)
+com o token de integração criado no painel da Hubla.
+
+```bash
+hubla-cli login --api-token          # pede o token de modo oculto e testa uma leitura
+hubla-cli --backend public status
+hubla-cli --backend auto sales list  # API pública quando houver equivalente, portal no resto
+```
+
+Em automações, defina `HUBLA_API_TOKEN` e `HUBLA_BACKEND` no ambiente:
+
+| Backend | O que faz |
+|---|---|
+| `portal` (padrão nesta versão) | Usa os BFFs do portal com a sessão do `hubla-cli login`. |
+| `public` | Usa só a API pública; operações sem equivalente falham com `PublicApiUnsupported`. |
+| `auto` | Usa a API pública em tudo que ela cobre e o portal no restante. |
+
+Com `public` ou `auto`, os métodos cobertos devolvem o mesmo formato do portal (por exemplo `offers[].id`,
+`memberRef`, `amount.paidCents`, `payerSession.utmSource`), além dos campos originais da API pública. Fatias
+cobertas: vendas (listagem, detalhe e totais calculados), produtos e ofertas, membros (participantes),
+convite gratuito sem oferta, assinaturas por comprador, desativação de assinatura, reembolsos e cupons.
+Detalhes, campos que a API pública não oferece e diferenças de comportamento estão em
+[docs/public-api.md](docs/public-api.md).
+
 ## TUI interativa
 
 Rode sem argumentos em um terminal interativo ou use:

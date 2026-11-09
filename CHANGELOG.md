@@ -6,6 +6,22 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 
 ## [Não lançado]
 
+## [0.4.0] - 2026-11-09
+
+### Adicionado
+
+- Backend da API pública oficial da Hubla (`--backend public|auto`, `HUBLA_BACKEND`), autenticado pelo token de
+  integração (`HUBLA_API_TOKEN` ou `hubla-cli login --api-token`), sem login no portal.
+- Vendas, produtos e ofertas, membros, convite gratuito sem oferta, assinaturas por comprador, desativação de
+  assinatura, reembolsos e cupons pela API pública, no mesmo formato de resposta do portal.
+- `hubla-cli api public <MÉTODO> /v1/...` para chamadas cruas à API pública.
+- Espera limitada em HTTP 429 nas leituras da API pública; escritas nunca são repetidas.
+- Documentação das lacunas e diferenças em `docs/public-api.md`.
+
+### Corrigido
+
+- A listagem de faturas pela API pública envia `dateStart` para manter o histórico completo, como no portal.
+
 ## [0.3.0] - 2026-09-27
 
 ### Adicionado
@@ -75,7 +91,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o 
 - Agent Skill com instalação automática para harnesses compatíveis.
 - Testes, lint, build e CI multiplataforma.
 
-[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.3.0...HEAD
+[Não lançado]: https://github.com/pycodebr/hubla-cli/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/pycodebr/hubla-cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pycodebr/hubla-cli/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/pycodebr/hubla-cli/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/pycodebr/hubla-cli/compare/v0.1.2...v0.2.0

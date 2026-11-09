@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -259,3 +260,97 @@ class CredentialStore:
                 temporary_path.unlink(missing_ok=True)
         except OSError as exc:
             raise CredentialError("não foi possível salvar a sessão local") from exc
+
+
+class ApiTokenStore:
+    """Store a Public API integration token per profile (keyring or private file)."""
+
+    _USERNAME = "public-api-token"
+
+    def __init__(
+        self,
+        *,
+        config_dir: str | Path | None = None,
+        profile: str = "default",
+        keyring_backend: Any = None,
+    ) -> None:
+        if not _PROFILE_PATTERN.fullmatch(profile) or profile in {".", ".."}:
+            raise CredentialError(
+                "perfil inválido; use letras, números, ponto, hífen ou sublinhado"
+            )
+        self._profile = profile
+        self._config_dir = Path(config_dir or user_config_path("hubla-cli"))
+        self._path = self._config_dir / "profiles" / f"{profile}.api.json"
+        self._service = f"{_SERVICE_PREFIX}:{profile}:api"
+        self._keyring = CredentialStore._resolve_keyring(keyring_backend)
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    def save(self, token: str) -> str:
+        """Persist the token and return the storage backend used."""
+        if not isinstance(token, str) or not token:
+            raise CredentialError("token da API pública vazio")
+        metadata: dict[str, str] = {"storage": "file"}
+        if self._keyring is not None:
+            try:
+                self._keyring.set_password(self._service, self._USERNAME, token)
+                metadata["storage"] = "keyring"
+            except Exception:  # pragma: no cover - backend-specific failures
+                self._keyring = None
+        if metadata["storage"] == "file":
+            metadata["token"] = token
+        self._write(metadata)
+        return metadata["storage"]
+
+    def load(self) -> str | None:
+        """Return the saved token or None when the profile has no token."""
+        if not self._path.exists():
+            return None
+        try:
+            metadata = json.loads(self._path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise CredentialError("token local da API pública ilegível") from exc
+        if not isinstance(metadata, dict):
+            raise CredentialError("token local da API pública inválido")
+        if metadata.get("storage") == "keyring":
+            if self._keyring is None:
+                raise CredentialError("o cofre do sistema não está disponível")
+            try:
+                token = self._keyring.get_password(self._service, self._USERNAME)
+            except Exception as exc:  # pragma: no cover - backend-specific failures
+                raise CredentialError("não foi possível acessar o cofre") from exc
+        else:
+            token = metadata.get("token")
+        return token if isinstance(token, str) and token else None
+
+    def delete(self) -> None:
+        """Remove the saved token from the keyring and the profile file."""
+        if self._keyring is not None:
+            with contextlib.suppress(Exception):  # absent secret is fine
+                self._keyring.delete_password(self._service, self._USERNAME)
+        try:
+            self._path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise CredentialError("não foi possível remover o token local") from exc
+
+    def _write(self, metadata: dict[str, str]) -> None:
+        directory = self._path.parent
+        try:
+            directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+            fd, temporary_name = tempfile.mkstemp(
+                dir=directory, prefix=f".{self._profile}.api.", suffix=".tmp"
+            )
+            temporary_path = Path(temporary_name)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                    json.dump(metadata, handle, ensure_ascii=False, indent=2)
+                    handle.write("\n")
+                if os.name != "nt":
+                    temporary_path.chmod(0o600)
+                os.replace(temporary_path, self._path)
+            finally:
+                temporary_path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise CredentialError("não foi possível salvar o token local") from exc

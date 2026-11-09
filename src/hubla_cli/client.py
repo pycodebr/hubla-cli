@@ -7,13 +7,15 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from hubla_cli.auth import HublaAuth
-from hubla_cli.credentials import CredentialStore
+from hubla_cli.credentials import ApiTokenStore, CredentialStore
 from hubla_cli.errors import (
     ConfirmationRequired,
     CredentialError,
     HublaAuthError,
     HublaContractError,
+    PublicApiUnsupported,
 )
+from hubla_cli.public_transport import TOKEN_ENV, PublicApiTransport
 from hubla_cli.resources import (
     AccountResource,
     AffiliatesResource,
@@ -37,7 +39,25 @@ from hubla_cli.resources import (
     StorefrontsResource,
     SubscriptionsResource,
 )
+from hubla_cli.resources.public import PUBLIC_RESOURCE_CLASSES
 from hubla_cli.transport import HublaTransport
+
+BACKENDS = ("portal", "public", "auto")
+BACKEND_ENV = "HUBLA_BACKEND"
+
+
+def resolve_backend(value: str | None = None) -> str:
+    """Return the selected backend: explicit value, then HUBLA_BACKEND, then portal.
+
+    ``portal`` uses the portal BFFs with a user session (legacy). ``public`` uses
+    only the official Public API with an integration token and fails on
+    operations that have no equivalent there. ``auto`` uses the Public API for
+    every operation it covers and the portal for the rest.
+    """
+    selected = (value or os.getenv(BACKEND_ENV) or "portal").strip().lower()
+    if selected not in BACKENDS:
+        raise ValueError(f"backend inválido: {selected}; use portal, public ou auto")
+    return selected
 
 
 class HublaClient:
@@ -50,8 +70,25 @@ class HublaClient:
         transport: Any | None = None,
         timeout: float | None = None,
         request_id: bool | None = None,
+        backend: str | None = None,
+        public_transport: Any | None = None,
+        api_token: str | None = None,
     ) -> None:
-        if transport is None:
+        self.backend = resolve_backend(backend)
+        self._public_transport: Any | None = None
+        if self.backend != "portal":
+            self._public_transport = public_transport or PublicApiTransport(
+                api_token or os.getenv(TOKEN_ENV) or "",
+                timeout=timeout
+                if timeout is not None
+                else float(os.getenv("HUBLA_TIMEOUT", "30")),
+            )
+        self._timeout = timeout
+        self._request_id_flag = request_id
+        portal_lazy = self.backend == "public" or (
+            self.backend == "auto" and auth is None
+        )
+        if transport is None and not portal_lazy:
             auth = auth or HublaAuth.from_environment()
             timeout = (
                 timeout
@@ -71,6 +108,7 @@ class HublaClient:
         self._transport = transport
         self._auth = auth
         self._offer_ids_cache: list[str] | None = None
+        self._public_cache: dict[str, Any] = {}
         self.account = AccountResource(self)
         self.agents_brains = AgentsBrainsResource(self)
         self.agents_channels = AgentsChannelsResource(self)
@@ -92,6 +130,9 @@ class HublaClient:
         self.sales = SalesResource(self)
         self.storefronts = StorefrontsResource(self)
         self.subscriptions = SubscriptionsResource(self)
+        if self.backend != "portal":
+            for name, resource_class in PUBLIC_RESOURCE_CLASSES.items():
+                setattr(self, name, resource_class(self))
 
     @classmethod
     def from_profile(
@@ -99,9 +140,35 @@ class HublaClient:
         *,
         profile: str = "default",
         credential_store: CredentialStore | None = None,
+        token_store: ApiTokenStore | None = None,
+        backend: str | None = None,
         **kwargs: Any,
     ) -> HublaClient:
         """Build a client from environment variables or a saved login profile."""
+        selected = resolve_backend(backend)
+        if selected != "portal":
+            token = (
+                os.getenv(TOKEN_ENV)
+                or (token_store or ApiTokenStore(profile=profile)).load()
+            )
+            if not token:
+                raise CredentialError(
+                    f"nenhum token da API pública para o perfil '{profile}'; defina "
+                    f"{TOKEN_ENV} ou execute hubla-cli login --api-token"
+                )
+            kwargs["api_token"] = token
+            kwargs["backend"] = selected
+            if selected == "public":
+                return cls(**kwargs)
+            try:
+                portal = cls.from_profile(
+                    profile=profile,
+                    credential_store=credential_store,
+                    backend="portal",
+                )
+            except CredentialError:
+                return cls(**kwargs)
+            return cls(auth=portal._auth, **kwargs)
         env_email = os.getenv("HUBLA_EMAIL")
         env_password = os.getenv("HUBLA_PASSWORD")
         env_refresh = os.getenv("HUBLA_REFRESH_TOKEN")
@@ -245,6 +312,26 @@ class HublaClient:
         response_type: str = "json",
         headers: Mapping[str, str] | None = None,
     ) -> Any:
+        if self._transport is None:
+            if self.backend == "public":
+                raise PublicApiUnsupported(
+                    f"{method.upper()} {service}{path} não tem equivalente na API pública "
+                    "da Hubla; use o backend auto ou portal"
+                )
+            if self._auth is None:
+                raise PublicApiUnsupported(
+                    f"{method.upper()} {service}{path} não existe na API pública e não há "
+                    "login do portal neste perfil"
+                )
+            self._transport = HublaTransport(
+                self._auth,
+                timeout=self._timeout
+                if self._timeout is not None
+                else float(os.getenv("HUBLA_TIMEOUT", "30")),
+                request_id=self._request_id_flag
+                if self._request_id_flag is not None
+                else os.getenv("HUBLA_REQUEST_ID", "true").lower() == "true",
+            )
         return self._transport.request(
             service,
             method,
@@ -254,6 +341,29 @@ class HublaClient:
             response_type=response_type,
             headers=headers,
         )
+
+    def public_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Mapping[str, Any] | None = None,
+        json: Any = None,
+        confirm: bool = False,
+    ) -> Any:
+        """Call the official Public API; non-read calls require confirmation."""
+        if self._public_transport is None:
+            raise HublaAuthError(
+                "API pública desativada neste cliente; use backend public ou auto"
+            )
+        from hubla_cli.public_transport import is_read_request
+
+        if not is_read_request(method, path) and confirm is not True:
+            raise ConfirmationRequired(
+                f"ação de escrita bloqueada: {method} {path}; "
+                "use confirmação explícita somente após revisar o alvo"
+            )
+        return self._public_transport.request(method, path, params=params, json=json)
 
     def write(
         self,
